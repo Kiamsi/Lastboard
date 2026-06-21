@@ -1,0 +1,1 @@
+A simple desktop app for monitoring some of the last performed activities
