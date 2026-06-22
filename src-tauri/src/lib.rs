@@ -1,8 +1,58 @@
 #[derive(serde::Serialize)]
 struct UptimeInfo {
     uptime_formatted: String,
-    boot_unix_seconds: u64,
+    time_system_started: u64,
 }
+
+#[cfg(target_os = "windows")]
+fn get_uptime_windows() -> UptimeInfo {
+
+    use windows_sys::Win32::System::SystemInformation::GetTickCount64;
+    let milliseconds = unsafe { GetTickCount64() };
+    let total_seconds = milliseconds / 1000;
+    let hours = total_seconds / 3600;
+    let minutes = (total_seconds % 3600) / 60;
+    let seconds = total_seconds % 60; 
+
+    let uptime_formatted = format!("{}h {}m {}s", hours, minutes, seconds);
+
+    let current_time = std::time::SystemTime::now()
+    .duration_since(std::time::UNIX_EPOCH)
+    .expect("i know you didnt'turn on your pc in the 60s")
+    .as_secs();
+
+    let time_system_started = current_time - total_seconds;
+
+    UptimeInfo{
+        uptime_formatted,
+        time_system_started,
+    }
+}
+
+#[tauri::command]
+fn get_uptime() -> UptimeInfo {
+    #[cfg(target_os = "windows")]
+    {
+        get_uptime_windows()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        UptimeInfo {
+            uptime_formatted: String::from("not yet"),
+            time_system_started: 0,
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        UptimeInfo {
+            uptime_formatted: String::from("i'll get to it eventually"),
+            time_system_started: 0,
+        }
+    }
+}
+
 
 
 
@@ -64,7 +114,7 @@ fn get_recent_file_os() -> String {
 
     #[cfg(target_os = "macos")]
     {
-        "idk if i'll implement it later".to_string()
+        "maybe will implement later".to_string()
     }
 }
 
@@ -73,7 +123,7 @@ fn get_recent_file_os() -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_recent_file_os])
+        .invoke_handler(tauri::generate_handler![get_recent_file_os, get_uptime])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
