@@ -1,18 +1,15 @@
-const { invoke } = window.__TAURI__.core;
+import { invoke } from '@tauri-apps/api/core';
 
-let greetInputEl;
-let greetMsgEl;
+async function refreshUptime() {
+  const info = await invoke('get_uptime');
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsgEl.textContent = await invoke("greet", { name: greetInputEl.value });
+  const date = new Date(info.time_system_started * 1000);
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+
+  document.getElementById('uptimeDisplay').textContent = info.uptime_formatted;
+  document.getElementById('bootTimeDisplay').textContent = hours + ':' + minutes;
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  greetInputEl = document.querySelector("#greet-input");
-  greetMsgEl = document.querySelector("#greet-msg");
-  document.querySelector("#greet-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-    greet();
-  });
-});
+refreshUptime();
+setInterval(refreshUptime, 1000);
