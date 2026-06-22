@@ -1,16 +1,37 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
+    <link rel="stylesheet" href="styles.css" />
+</head>
 
-  <body>
-    <main class="container">
-      <h1>Tracker</h1>
-    </main>
-  </body>
+<body>
+
+
+    <div class="row">
+
+
+      <div class="card">
+          <div class="value" id="boot time display">hh-mm</div>
+          <div class="label">Time system started</div>
+      </div>
+
+      <div class="card">
+          <div class="value" id="uptime display">hh-mm-ss</div>
+          <div class="label">Current session duration</div>
+      </div>
+
+      <div class="card">
+           <div class="value" id="processes display">xx</div>
+           <div class="label">Processes running</div>
+      </div>
+
+    </div>
+
+    <script type="module" src="main.js"></script>
+
+</body>
+
 </html>
