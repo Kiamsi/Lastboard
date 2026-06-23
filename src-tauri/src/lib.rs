@@ -32,9 +32,9 @@ fn get_uptime() -> UptimeInfo {
 #[tauri::command]
 fn get_process_count() -> usize {
     use sysinfo::System;
-    let mut sys = System::new_all();
-    sys.refresh_all();
-    sys.processes().len()
+    let mut system = System::new_all();
+    system.refresh_all();
+    system.processes().len()
 }
 
 #[tauri::command]

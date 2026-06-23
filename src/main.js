@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 
 const bootTimeDisplay = document.getElementById('bootTimeDisplay');
 const uptimeDisplay = document.getElementById('uptimeDisplay');
+const processesDisplay = document.getElementById('processesDisplay');
 
 function formatUptime(totalSeconds) {
 
@@ -25,5 +26,12 @@ async function refreshUptime() {
 
 }
 
+async function refreshProcessCount() {
+  const count = await invoke('get_process_count');
+  processesDisplay.textContent = count;
+}
+
 refreshUptime();
+refreshProcessCount();
 setInterval(refreshUptime, 1000);
+setInterval(refreshProcessCount, 1000);
