@@ -1,14 +1,28 @@
 import { invoke } from '@tauri-apps/api/core';
 
+const bootTimeDisplay = document.getElementById('bootTimeDisplay');
+const uptimeDisplay = document.getElementById('uptimeDisplay');
+
+function formatUptime(totalSeconds) {
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}h ${minutes}m ${seconds}s`;
+
+}
+
+const initialData = await invoke('get_uptime');
+
+bootTimeDisplay.textContent = new Date(initialData.time_system_started * 1000)
+  .toTimeString()
+  .slice(0, 5);
+
 async function refreshUptime() {
-  const info = await invoke('get_uptime');
 
-  const date = new Date(info.time_system_started * 1000);
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const { uptime } = await invoke('get_uptime');
+  uptimeDisplay.textContent = formatUptime(uptime);
 
-  document.getElementById('uptimeDisplay').textContent = info.uptime_formatted;
-  document.getElementById('bootTimeDisplay').textContent = hours + ':' + minutes;
 }
 
 refreshUptime();

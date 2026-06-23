@@ -1,31 +1,24 @@
 #[derive(serde::Serialize)]
 struct UptimeInfo {
-    uptime_formatted: String,
+    uptime: u64,
     time_system_started: u64,
 }
 
 #[cfg(target_os = "windows")]
 fn get_uptime_windows() -> UptimeInfo {
-
+    
     use windows_sys::Win32::System::SystemInformation::GetTickCount64;
+    
     let milliseconds = unsafe { GetTickCount64() };
     let total_seconds = milliseconds / 1000;
-    let hours = total_seconds / 3600;
-    let minutes = (total_seconds % 3600) / 60;
-    let seconds = total_seconds % 60; 
-
-    let uptime_formatted = format!("{}h {}m {}s", hours, minutes, seconds);
-
     let current_time = std::time::SystemTime::now()
-    .duration_since(std::time::UNIX_EPOCH)
-    .expect("i know you didnt'turn on your pc in the 60s")
-    .as_secs();
-
-    let time_system_started = current_time - total_seconds;
-
-    UptimeInfo{
-        uptime_formatted,
-        time_system_started,
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("i know you didn't turn on your pc in the 60s")
+        .as_secs();
+    
+    UptimeInfo {
+        uptime: total_seconds,
+        time_system_started: current_time - total_seconds,
     }
 }
 
@@ -39,7 +32,7 @@ fn get_uptime() -> UptimeInfo {
     #[cfg(target_os = "linux")]
     {
         UptimeInfo {
-            uptime_formatted: String::from("not yet"),
+            uptime: 0,
             time_system_started: 0,
         }
     }
@@ -47,7 +40,7 @@ fn get_uptime() -> UptimeInfo {
     #[cfg(target_os = "macos")]
     {
         UptimeInfo {
-            uptime_formatted: String::from("i'll get to it eventually"),
+            uptime: 0,
             time_system_started: 0,
         }
     }
