@@ -42,7 +42,9 @@ fn get_process_count(state: tauri::State<AppState>) -> usize {
     
     let mut system = state.system.lock().unwrap();
      
-    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    let specifics = sysinfo::ProcessRefreshKind::nothing().without_tasks();
+   
+    system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, specifics);
     
     system.processes().len()
 }
