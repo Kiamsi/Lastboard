@@ -3,35 +3,94 @@ import { invoke } from '@tauri-apps/api/core';
 const bootTimeDisplay = document.getElementById('bootTimeDisplay');
 const uptimeDisplay = document.getElementById('uptimeDisplay');
 const processesDisplay = document.getElementById('processesDisplay');
+const appCountDisplay = document.getElementById('app-count');
+const networkSpeedDisplay = document.getElementById('networkSpeedDisplay');
 
 function formatUptime(totalSeconds) {
-
+    
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
+    
   return `${hours}h ${minutes}m ${seconds}s`;
 
 }
 
-const initialData = await invoke('get_uptime');
-
-bootTimeDisplay.textContent = new Date(initialData.time_system_started * 1000)
-  .toTimeString()
-  .slice(0, 5);
-
 async function refreshUptime() {
-
-  const { uptime } = await invoke('get_uptime');
-  uptimeDisplay.textContent = formatUptime(uptime);
-
+    
+  try {
+        const { uptime } = await invoke('get_uptime');
+        if (uptimeDisplay) uptimeDisplay.textContent = formatUptime(uptime);
+    } 
+    catch (error) {
+        console.error('Failed to fetch uptime:', error);
+    }
 }
 
 async function refreshProcessCount() {
-  const count = await invoke('get_process_count');
-  processesDisplay.textContent = count;
+    
+  try {
+        const count = await invoke('get_process_count');
+        if (processesDisplay) processesDisplay.textContent = count;
+    } 
+    catch (error) {
+        console.error('Failed to fetch process count:', error);
+    }
 }
 
-refreshUptime();
-refreshProcessCount();
-setInterval(refreshUptime, 1000);
-setInterval(refreshProcessCount, 1000);
+async function refreshAppCount() {
+    
+  try {
+        const appsList = await invoke('get_installed_apps');
+        if (appCountDisplay) appCountDisplay.textContent = appsList.length;
+    } 
+    catch (error) {
+        console.error('Failed to fetch app count:', error);
+        if (appCountDisplay) appCountDisplay.textContent = 'Error';
+    }
+}
+
+async function refreshNetworkSpeed() {
+    
+  try {
+        
+        const [downBytes, upBytes] = await invoke('get_network_speed');
+        const downMbps = ((downBytes * 8) / 1000000).toFixed(2);
+        const upMbps = ((upBytes * 8) / 1000000).toFixed(2);
+        
+        if (networkSpeedDisplay) {
+            networkSpeedDisplay.textContent = `${downMbps} ↓ / ${upMbps} ↑ Mbps`;
+        }
+    } 
+    catch (error) {
+        console.error('Failed to fetch network speed:', error);
+        if (networkSpeedDisplay) networkSpeedDisplay.textContent = 'Error';
+    }
+}
+
+async function initializeApp() {
+    
+  try {
+        const initialData = await invoke('get_uptime');
+        if (bootTimeDisplay) {
+            bootTimeDisplay.textContent = new Date(initialData.time_system_started * 1000)
+                .toTimeString()
+                .slice(0, 5);
+        }
+    } 
+    catch (error) {
+        console.error('Failed to fetch boot time:', error);
+    }
+
+    refreshUptime();
+    refreshProcessCount();
+    refreshAppCount();
+    refreshNetworkSpeed();
+
+    setInterval(refreshUptime, 1000);
+    setInterval(refreshProcessCount, 1000);
+    setInterval(refreshNetworkSpeed, 1000); 
+    setInterval(refreshAppCount, 300000); 
+}
+
+window.addEventListener('DOMContentLoaded', initializeApp);

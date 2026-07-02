@@ -1,6 +1,7 @@
 use crate::UptimeInfo;
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::PathBuf;
 
 pub fn get_uptime() -> UptimeInfo {
     // 1. Read the raw text from the Linux uptime file
@@ -40,4 +41,62 @@ pub fn get_uptime() -> UptimeInfo {
 
 pub fn get_recent_file_linux() -> String {
     "might implement later".to_string()
+}
+
+pub fn installed_apps() -> Vec<String> {
+    let mut apps = Vec::new();
+    let home_directory = std::env::var("HOME").unwrap_or_default();
+    
+    let mut paths_to_check = Vec::new();
+    paths_to_check.push(PathBuf::from("/usr/share/applications"));
+    paths_to_check.push(PathBuf::from(format!("{}/.local/share/applications", home_directory)));
+    paths_to_check.push(PathBuf::from("/var/lib/flatpak/exports/share/applications"));
+    paths_to_check.push(PathBuf::from("/var/lib/snapd/desktop/applications"));
+
+    for current_path in paths_to_check {
+        let directory_contents = fs::read_dir(current_path);
+        
+        if let Ok(entries) = directory_contents {
+            for entry_result in entries {
+                if let Ok(entry) = entry_result {
+                    let file_path = entry.path();
+                    
+                    let mut is_desktop_file = false;
+                    if let Some(extension) = file_path.extension() {
+                        if extension == "desktop" {
+                            is_desktop_file = true;
+                        }
+                    }
+                    
+                    if is_desktop_file {
+                        let file_content_result = fs::read_to_string(&file_path);
+                        
+                        if let Ok(content) = file_content_result {
+                            for line in content.lines() {
+                                if line.starts_with("Name=") {
+                                    let clean_name = line.replace("Name=", "").trim().to_string();
+                                    
+                                    if !clean_name.is_empty() {
+                                        if !apps.contains(&clean_name) {
+                                            apps.push(clean_name);
+                                        }
+                                    }
+                                    
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    apps.sort_by(|a, b| {
+        let a_lower = a.to_lowercase();
+        let b_lower = b.to_lowercase();
+        a_lower.cmp(&b_lower)
+    });
+    
+    return apps;
 }

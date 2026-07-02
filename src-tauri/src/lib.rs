@@ -84,6 +84,24 @@ fn get_recent_file_os() -> String {
     }
 }
 
+#[tauri::command]
+fn get_installed_apps() -> Vec<String> {
+    
+    #[cfg(target_os = "windows")]
+    { 
+        windows::installed_apps() 
+    }
+
+    #[cfg(target_os = "linux")]
+    { 
+        linux::installed_apps() 
+    }
+
+    #[cfg(target_os = "macos")]
+    { 
+        macos::installed_apps() }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -99,7 +117,8 @@ pub fn run() {
             get_recent_file_os, 
             get_uptime, 
             get_process_count,
-            get_network_speed 
+            get_network_speed,
+            get_installed_apps,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
