@@ -102,6 +102,22 @@ fn get_installed_apps() -> Vec<String> {
         macos::installed_apps() }
 }
 
+#[tauri::command]
+fn get_open_connections() -> usize {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_open_connections()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_open_connections()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_open_connections()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -119,6 +135,7 @@ pub fn run() {
             get_process_count,
             get_network_speed,
             get_installed_apps,
+            get_open_connections,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

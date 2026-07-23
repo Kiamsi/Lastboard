@@ -53,7 +53,9 @@ pub fn installed_apps() -> Vec<String> {
 
     let data_dirs = std::env::var("XDG_DATA_DIRS")
         .unwrap_or_else(|_| "/usr/local/share:/usr/share".to_string());
+    
     for dir in data_dirs.split(':') {
+        
         if !dir.is_empty() {
             paths_to_check.push(PathBuf::from(dir).join("applications"));
         }
@@ -63,19 +65,28 @@ pub fn installed_apps() -> Vec<String> {
     paths_to_check.push(PathBuf::from("/var/lib/snapd/desktop/applications"));
 
     for current_path in paths_to_check {
+        
         let directory_contents = fs::read_dir(current_path);
+        
+        //oh man
         if let Ok(entries) = directory_contents {
+            
             for entry_result in entries {
                 if let Ok(entry) = entry_result {
+                    
                     let file_path = entry.path();
                     let mut is_desktop_file = false;
+                    
                     if let Some(extension) = file_path.extension() {
+                        
                         if extension == "desktop" {
                             is_desktop_file = true;
                         }
                     }
+                    
                     if is_desktop_file {
                         let file_content_result = fs::read_to_string(&file_path);
+                       
                         if let Ok(content) = file_content_result {
                             let mut name = None;
                             let mut skip_entry = false;
@@ -113,4 +124,28 @@ pub fn installed_apps() -> Vec<String> {
         a_lower.cmp(&b_lower)
     });
     return apps;
+}
+
+fn count_established(contents: &str) -> usize {
+    contents
+        .lines()
+        .skip(1) 
+        .filter(|line| {
+            
+            line.split_whitespace().nth(3) == Some("01")
+        })
+        .count()
+}
+
+pub fn get_open_connections() -> usize {
+    let tcp4 = fs::read_to_string("/proc/net/tcp")
+        .expect("/proc/net/tcp should always exist");
+    let mut total = count_established(&tcp4);
+
+    
+    if let Ok(tcp6) = fs::read_to_string("/proc/net/tcp6") {
+        total += count_established(&tcp6);
+    }
+
+    total
 }
