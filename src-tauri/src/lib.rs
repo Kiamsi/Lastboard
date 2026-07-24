@@ -175,6 +175,29 @@ fn get_cpu_usage(state: tauri::State<AppState>) -> f32 {
     system.global_cpu_usage()
 }
 
+#[tauri::command]
+fn get_cpu_speed(state: tauri::State<AppState>) -> u64 {
+    let mut system = state.system.lock().unwrap();
+    system.refresh_cpu_frequency();
+
+    let cpus = system.cpus();
+    if cpus.is_empty() {
+        return 0;
+    }
+
+    let total: u64 = cpus.iter().map(|c| c.frequency()).sum();
+    total / cpus.len() as u64 // average across all logical cores, in MHz
+}
+
+#[tauri::command]
+fn get_ram_usage(state: tauri::State<AppState>) -> (u64, u64) {
+    let mut system = state.system.lock().unwrap();
+    system.refresh_memory();
+    let used = system.used_memory();
+    let total = system.total_memory();
+    (used, total)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -197,6 +220,8 @@ pub fn run() {
             get_os_name,
             get_listening_ports,
             get_cpu_usage,
+            get_cpu_speed,
+            get_ram_usage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

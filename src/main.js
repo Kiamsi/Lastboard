@@ -10,6 +10,8 @@ const osNameDisplay = document.getElementById('osNameDisplay');
 const lanDevicesDisplay = document.getElementById('lanDevicesDisplay');
 const listeningPortsDisplay = document.getElementById('listeningPortsDisplay');
 const cpuUsageDisplay = document.getElementById('cpuUsageDisplay');
+const cpuClockSpeedDisplay = document.getElementById('cpuClockSpeedDisplay');
+const ramUsageDisplay = document.getElementById('ramUsageDisplay');
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -98,6 +100,32 @@ async function refreshCpuUsage() {
     }
 }
 
+async function refreshCpuSpeed() {
+    try {
+        const speed = await invoke('get_cpu_speed');
+        if (cpuClockSpeedDisplay) {
+            cpuClockSpeedDisplay.textContent = `${(speed / 1000).toFixed(2)} GHz`;
+        }
+    } catch (error) {
+        console.error('Failed to fetch CPU speed:', error);
+    }
+}
+
+async function refreshRamUsage() {
+    try {
+        const [usedBytes, totalBytes] = await invoke('get_ram_usage');
+        
+        const usedGB = (usedBytes / 1073741824).toFixed(1);
+        const totalGB = (totalBytes / 1073741824).toFixed(1);
+        
+        if (ramUsageDisplay) {
+            ramUsageDisplay.textContent = `${usedGB} / ${totalGB} GB`;
+        }
+    } catch (error) {
+        console.error("Couldn't get ram usage ", error);
+    }
+}
+
 async function initializeApp() {
     try {
         const initialData = await invoke('get_uptime');
@@ -127,6 +155,8 @@ async function initializeApp() {
     refreshLanDevices();
     refreshListeningPorts();
     refreshCpuUsage();
+    refreshCpuSpeed();
+    refreshRamUsage();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -136,6 +166,8 @@ async function initializeApp() {
     setInterval(refreshLanDevices, 60000);
     setInterval(refreshListeningPorts, 5000);
     setInterval(refreshCpuUsage, 1000);
+    setInterval(refreshCpuSpeed, 1000);
+    setInterval(refreshRamUsage, 4000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

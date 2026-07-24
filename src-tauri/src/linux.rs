@@ -81,6 +81,52 @@ pub fn get_listening_ports() -> usize {
     count_listening(&tcp4) + count_listening(&tcp6)
 }
 
+pub fn get_cpu_temperature() -> Option<f32> {
+    let entries = match fs::read_dir("/sys/class/hwmon") {
+        Ok(entries) => entries,
+        Err(_) => return None,
+    };
+
+    let known_cpu_sensors = ["coretemp", "k10temp", "zenpower", "cpu_thermal"];
+
+    for entry_result in entries {
+        let entry = match entry_result {
+            Ok(entry) => entry,
+            Err(_) => continue,
+        };
+
+        let name_path = entry.path().join("name");
+        let sensor_name = match fs::read_to_string(&name_path) {
+            Ok(text) => text.trim().to_string(),
+            Err(_) => continue,
+        };
+
+        let mut matched = false;
+        for known_name in known_cpu_sensors {
+            if sensor_name == known_name {
+                matched = true;
+            }
+        }
+        if !matched {
+            continue;
+        }
+
+        
+        let mut number = 1;
+        while number <= 8 {
+            let temp_path = entry.path().join(format!("temp{}_input", number));
+            if let Ok(raw_value) = fs::read_to_string(&temp_path) {
+                if let Ok(millidegrees) = raw_value.trim().parse::<i64>() {
+                    return Some(millidegrees as f32 / 1000.0);
+                }
+            }
+            number += 1;
+        }
+    }
+
+    None
+}
+
 pub fn installed_apps() -> Vec<String> {
     
     let mut apps = Vec::new();
