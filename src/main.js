@@ -9,6 +9,7 @@ const connectionsDisplay = document.getElementById('connectionsDisplay');
 const osNameDisplay = document.getElementById('osNameDisplay');
 const lanDevicesDisplay = document.getElementById('lanDevicesDisplay');
 const listeningPortsDisplay = document.getElementById('listeningPortsDisplay');
+const cpuUsageDisplay = document.getElementById('cpuUsageDisplay');
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -86,6 +87,17 @@ async function refreshListeningPorts() {
     }
 }
 
+async function refreshCpuUsage() {
+    try {
+        const cpu = await invoke('get_cpu_usage');
+        if (cpuUsageDisplay) {
+            cpuUsageDisplay.textContent = `${cpu.toFixed(1)}%`;
+        }
+    } catch (error) {
+        console.error('Failed to fetch CPU usage:', error);
+    }
+}
+
 async function initializeApp() {
     try {
         const initialData = await invoke('get_uptime');
@@ -114,6 +126,7 @@ async function initializeApp() {
     refreshOpenConnections();
     refreshLanDevices();
     refreshListeningPorts();
+    refreshCpuUsage();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -122,6 +135,7 @@ async function initializeApp() {
     setInterval(refreshAppCount, 300000); 
     setInterval(refreshLanDevices, 60000);
     setInterval(refreshListeningPorts, 5000);
+    setInterval(refreshCpuUsage, 1000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

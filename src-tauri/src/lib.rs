@@ -168,6 +168,13 @@ fn get_os_name() -> String {
     }
 }
 
+#[tauri::command]
+fn get_cpu_usage(state: tauri::State<AppState>) -> f32 {
+    let mut system = state.system.lock().unwrap();
+    system.refresh_cpu_usage();
+    system.global_cpu_usage()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -189,6 +196,7 @@ pub fn run() {
             get_connected_lan_devices,
             get_os_name,
             get_listening_ports,
+            get_cpu_usage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

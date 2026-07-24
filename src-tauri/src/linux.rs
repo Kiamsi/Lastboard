@@ -38,10 +38,7 @@ pub fn get_uptime() -> UptimeInfo {
 }
 
 fn count_connected(contents: &str) -> usize {
-    contents
-        .lines()
-        .skip(1) 
-        .filter(|line| {
+    contents.lines().skip(1) .filter(|line| {
             
             line.split_whitespace().nth(3) == Some("01")
         })
@@ -74,11 +71,8 @@ pub fn get_listening_ports() -> usize {
     let tcp6 = std::fs::read_to_string("/proc/net/tcp6").unwrap_or_default();
     
     let count_listening = |contents: &str| -> usize {
-        contents
-            .lines()
-            .skip(1)
-            .filter(|line| {
-                // '0A' represents the listening state
+        contents.lines() .skip(1).filter(|line| {
+                
                 line.split_whitespace().nth(3) == Some("0A")
             })
             .count()
