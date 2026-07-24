@@ -6,6 +6,7 @@ const processesDisplay = document.getElementById('processesDisplay');
 const appCountDisplay = document.getElementById('app-count');
 const networkSpeedDisplay = document.getElementById('networkSpeedDisplay');
 const connectionsDisplay = document.getElementById('connectionsDisplay');
+const lanDevicesDisplay = document.getElementById('lanDevicesDisplay');
 
 function formatUptime(totalSeconds) {
 const hours = Math.floor(totalSeconds / 3600);
@@ -71,6 +72,16 @@ console.error('Failed to fetch open connections:', error);
     }
 }
 
+async function refreshLanDevices() {
+try {
+const count = await invoke('get_connected_lan_devices');
+if (lanDevicesDisplay) lanDevicesDisplay.textContent = count;
+    } 
+catch (error) {
+console.error('Failed to fetch LAN devices count:', error);
+    }
+}
+
 async function initializeApp() {
 try {
 const initialData = await invoke('get_uptime');
@@ -89,12 +100,14 @@ refreshProcessCount();
 refreshAppCount();
 refreshNetworkSpeed();
 refreshOpenConnections();
+refreshLanDevices();
 
 setInterval(refreshUptime, 1000);
 setInterval(refreshProcessCount, 1000);
 setInterval(refreshNetworkSpeed, 1000); 
 setInterval(refreshOpenConnections, 2500);
-setInterval(refreshAppCount, 300000); 
+setInterval(refreshAppCount, 300000);
+setInterval(refreshLanDevices, 60000); 
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

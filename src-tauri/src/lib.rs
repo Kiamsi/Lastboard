@@ -118,6 +118,22 @@ fn get_open_connections() -> usize {
     }
 }
 
+#[tauri::command]
+fn get_connected_lan_devices() -> usize {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_connected_lan_devices()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_connected_lan_devices()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_connected_lan_devices()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -136,6 +152,7 @@ pub fn run() {
             get_network_speed,
             get_installed_apps,
             get_open_connections,
+            get_connected_lan_devices,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -149,3 +149,11 @@ pub fn get_open_connections() -> usize {
 
     total
 }
+
+pub fn get_connected_lan_devices() -> usize {
+    let contents = match fs::read_to_string("/proc/net/arp") {
+        Ok(text) => text, Err(_) => return 0,
+    };
+    contents.lines().skip(1)
+    .filter(|line| line.split_whitespace().nth(3) != Some("00:00:00:00:00:00")).count()
+}
