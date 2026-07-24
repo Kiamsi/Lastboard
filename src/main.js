@@ -8,6 +8,7 @@ const networkSpeedDisplay = document.getElementById('networkSpeedDisplay');
 const connectionsDisplay = document.getElementById('connectionsDisplay');
 const osNameDisplay = document.getElementById('osNameDisplay');
 const lanDevicesDisplay = document.getElementById('lanDevicesDisplay');
+const listeningPortsDisplay = document.getElementById('listeningPortsDisplay');
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -76,6 +77,15 @@ async function refreshLanDevices() {
     }
 }
 
+async function refreshListeningPorts() {
+    try {
+        const count = await invoke('get_listening_ports');
+        if (listeningPortsDisplay) listeningPortsDisplay.textContent = count;
+    } catch (error) {
+        console.error('Failed to fetch listening ports:', error);
+    }
+}
+
 async function initializeApp() {
     try {
         const initialData = await invoke('get_uptime');
@@ -103,6 +113,7 @@ async function initializeApp() {
     refreshNetworkSpeed();
     refreshOpenConnections();
     refreshLanDevices();
+    refreshListeningPorts();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -110,6 +121,7 @@ async function initializeApp() {
     setInterval(refreshOpenConnections, 2500);
     setInterval(refreshAppCount, 300000); 
     setInterval(refreshLanDevices, 60000);
+    setInterval(refreshListeningPorts, 5000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

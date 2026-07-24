@@ -69,6 +69,24 @@ pub fn get_connected_lan_devices() -> usize {
     .filter(|line| line.split_whitespace().nth(3) != Some("00:00:00:00:00:00")).count()
 }
 
+pub fn get_listening_ports() -> usize {
+    let tcp4 = std::fs::read_to_string("/proc/net/tcp").unwrap_or_default();
+    let tcp6 = std::fs::read_to_string("/proc/net/tcp6").unwrap_or_default();
+    
+    let count_listening = |contents: &str| -> usize {
+        contents
+            .lines()
+            .skip(1)
+            .filter(|line| {
+                // '0A' represents the listening state
+                line.split_whitespace().nth(3) == Some("0A")
+            })
+            .count()
+    };
+    
+    count_listening(&tcp4) + count_listening(&tcp6)
+}
+
 pub fn installed_apps() -> Vec<String> {
     
     let mut apps = Vec::new();
