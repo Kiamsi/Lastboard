@@ -9,6 +9,7 @@
 
 <body>
 
+<div class="section-header">Stats</div>
 <div class="row">
 <div class="card">
 <div class="value" id="bootTimeDisplay">--:--</div>
@@ -26,6 +27,7 @@
 </div>
 </div>
 
+<div class="section-header">Network</div>
 <div class="row">
 <div class="card">
 <div class="value" id="networkSpeedDisplay">-- ↓ / -- ↑ Mbps</div>
@@ -40,13 +42,22 @@
 
 <div class="row">
 <div class="card">
+<div class="value" id="lanDevicesDisplay">--</div>
+<div class="label">Connected LAN Devices</div>
+</div>
+</div>
+
+<div class="section-header">System</div>
+<div class="row">
+<div class="card">
+<div class="value" id="osNameDisplay">--</div>
+<div class="label">Operating System</div>
+</div>
+
+<div class="card">
 <div class="value" id="app-count">--</div>
 <div class="label">Apps Installed</div>
 </div>
-<div class="card">
-    <div class="value" id="lanDevicesDisplay">--</div>
-    <div class="label">Connected LAN Devices</div>
-    </div>
 </div>
 
 <script type="module" src="main.js"></script>

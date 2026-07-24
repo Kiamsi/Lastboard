@@ -10,6 +10,7 @@ body {
   font-family: 'Segoe UI', system-ui, sans-serif;
   height: 100vh;
   padding: 24px;
+  margin-top: 0;
 }
 
 .row {
@@ -36,5 +37,15 @@ body {
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0.06em;
-  color: #808080;
+  color: #939292;
+}
+
+.section-header {
+    font-size: 16px;
+    color: #c8ccd5;
+    border-bottom: 2px solid #6b737e;
+    margin: 24px 16px 12px 16px;
+    margin-top: 0;
+    padding-bottom: 8px;
+    letter-spacing: 0.05em;
 }

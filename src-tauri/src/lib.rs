@@ -134,6 +134,24 @@ fn get_connected_lan_devices() -> usize {
     }
 }
 
+#[tauri::command]
+fn get_os_name() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_os_name()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_os_name()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        String::from("macOS")
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -153,6 +171,7 @@ pub fn run() {
             get_installed_apps,
             get_open_connections,
             get_connected_lan_devices,
+            get_os_name,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

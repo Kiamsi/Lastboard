@@ -37,8 +37,36 @@ pub fn get_uptime() -> UptimeInfo {
     }
 }
 
-pub fn get_recent_file_linux() -> String {
-    "might implement later".to_string()
+fn count_connected(contents: &str) -> usize {
+    contents
+        .lines()
+        .skip(1) 
+        .filter(|line| {
+            
+            line.split_whitespace().nth(3) == Some("01")
+        })
+        .count()
+}
+
+pub fn get_open_connections() -> usize {
+    let tcp4 = fs::read_to_string("/proc/net/tcp")
+        .expect("/proc/net/tcp should always exist");
+    let mut total = count_connected(&tcp4);
+
+    
+    if let Ok(tcp6) = fs::read_to_string("/proc/net/tcp6") {
+        total += count_connected(&tcp6);
+    }
+
+    total
+}
+
+pub fn get_connected_lan_devices() -> usize {
+    let contents = match fs::read_to_string("/proc/net/arp") {
+        Ok(text) => text, Err(_) => return 0,
+    };
+    contents.lines().skip(1)
+    .filter(|line| line.split_whitespace().nth(3) != Some("00:00:00:00:00:00")).count()
 }
 
 pub fn installed_apps() -> Vec<String> {
@@ -126,34 +154,36 @@ pub fn installed_apps() -> Vec<String> {
     return apps;
 }
 
-fn count_established(contents: &str) -> usize {
-    contents
-        .lines()
-        .skip(1) 
-        .filter(|line| {
-            
-            line.split_whitespace().nth(3) == Some("01")
-        })
-        .count()
+pub fn get_recent_file_linux() -> String {
+    "might implement later".to_string()
 }
 
-pub fn get_open_connections() -> usize {
-    let tcp4 = fs::read_to_string("/proc/net/tcp")
-        .expect("/proc/net/tcp should always exist");
-    let mut total = count_established(&tcp4);
-
+pub fn get_os_name() -> String {
+    let file_result = std::fs::read_to_string("/etc/os-release");
     
-    if let Ok(tcp6) = fs::read_to_string("/proc/net/tcp6") {
-        total += count_established(&tcp6);
+    if file_result.is_err() {
+        return String::from("Linux");
     }
-
-    total
-}
-
-pub fn get_connected_lan_devices() -> usize {
-    let contents = match fs::read_to_string("/proc/net/arp") {
-        Ok(text) => text, Err(_) => return 0,
-    };
-    contents.lines().skip(1)
-    .filter(|line| line.split_whitespace().nth(3) != Some("00:00:00:00:00:00")).count()
+    
+    let contents = file_result.unwrap();
+    
+    for line in contents.lines() {
+        if line.starts_with("PRETTY_NAME=") {
+            let mut name = line.replace("PRETTY_NAME=", "");
+            name = name.replace("\"", "");
+            name = name.replace("'", "");
+            return name;
+        }
+    }
+    
+    for line in contents.lines() {
+        if line.starts_with("NAME=") {
+            let mut name = line.replace("NAME=", "");
+            name = name.replace("\"", "");
+            name = name.replace("'", "");
+            return name;
+        }
+    }
+    
+    String::from("Linux")
 }
