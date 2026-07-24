@@ -17,6 +17,10 @@ pub struct UptimeInfo {
 pub struct AppState {
     pub system: Mutex<System>,
     pub networks: Mutex<Networks>,
+    #[cfg(target_os = "windows")]
+    pub disk_io: Mutex<crate::windows::DiskIoQuery>,
+    #[cfg(not(target_os = "windows"))]
+    pub last_disk_io: Mutex<Option<(u64, u64)>>,
 }
 
 #[tauri::command]
@@ -151,6 +155,37 @@ fn get_listening_ports() -> usize {
 }
 
 #[tauri::command]
+fn get_disk_io(state: tauri::State<AppState>) -> (u64, u64) {
+    #[cfg(target_os = "windows")]
+    {
+        let mut disk_io = state.disk_io.lock().unwrap();
+        windows::poll_disk_io(&mut disk_io)
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        let (current_read, current_written) = {
+            #[cfg(target_os = "linux")]
+            { linux::read_disk_totals() }
+            #[cfg(target_os = "macos")]
+            { macos::read_disk_totals() }
+        };
+
+        let mut last = state.last_disk_io.lock().unwrap();
+        let delta = match *last {
+            Some((prev_read, prev_written)) => (
+                current_read.saturating_sub(prev_read),
+                current_written.saturating_sub(prev_written),
+            ),
+            None => (0, 0),
+        };
+        *last = Some((current_read, current_written));
+        
+        delta
+    }
+}
+
+#[tauri::command]
 fn get_os_name() -> String {
     #[cfg(target_os = "windows")]
     {
@@ -204,6 +239,10 @@ pub fn run() {
     let app_state = AppState {
         system: Mutex::new(System::new_all()),
         networks: Mutex::new(Networks::new_with_refreshed_list()),
+        #[cfg(not(target_os = "windows"))]
+        last_disk_io: Mutex::new(None),
+        #[cfg(target_os = "windows")]
+        disk_io: Mutex::new(windows::init_disk_io_query()),
     };
 
     tauri::Builder::default()
@@ -222,6 +261,7 @@ pub fn run() {
             get_cpu_usage,
             get_cpu_speed,
             get_ram_usage,
+            get_disk_io,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

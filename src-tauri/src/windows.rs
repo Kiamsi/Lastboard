@@ -5,6 +5,10 @@ use windows_sys::Win32::NetworkManagement::IpHelper::{
     GetTcp6Table2, GetTcpTable2, MIB_TCP6TABLE2, MIB_TCPTABLE2,
 };
 use std::process::Command;
+use windows_sys::Win32::System::Performance::{
+    PdhAddCounterW, PdhCollectQueryData, PdhGetFormattedCounterValue, PdhOpenQueryW,
+    PDH_CSTATUS_VALID_DATA, PDH_FMT_COUNTERVALUE, PDH_FMT_LARGE, PDH_HCOUNTER, PDH_HQUERY,
+};
 
 pub fn get_uptime() -> UptimeInfo {
     use windows_sys::Win32::System::SystemInformation::GetTickCount64;
@@ -78,6 +82,65 @@ pub fn get_connected_lan_devices() -> usize {
                 && parts[1] != "ff-ff-ff-ff-ff-ff"
         })
         .count()
+}
+
+pub struct DiskIoQuery {
+    query: PDH_HQUERY,
+    read_counter: PDH_HCOUNTER,
+    write_counter: PDH_HCOUNTER,
+}
+
+unsafe impl Send for DiskIoQuery {}
+unsafe impl Sync for DiskIoQuery {}
+
+pub fn init_disk_io_query() -> DiskIoQuery {
+    unsafe {
+        let mut query: PDH_HQUERY = std::ptr::null_mut();
+        PdhOpenQueryW(std::ptr::null(), 0, &mut query);
+
+        let read_path: Vec<u16> = "\\PhysicalDisk(_Total)\\Disk Read Bytes/sec"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+        let write_path: Vec<u16> = "\\PhysicalDisk(_Total)\\Disk Write Bytes/sec"
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
+        let mut read_counter: PDH_HCOUNTER = std::ptr::null_mut();
+        let mut write_counter: PDH_HCOUNTER = std::ptr::null_mut();
+        PdhAddCounterW(query, read_path.as_ptr(), 0, &mut read_counter);
+        PdhAddCounterW(query, write_path.as_ptr(), 0, &mut write_counter);
+
+        
+        PdhCollectQueryData(query);
+
+        DiskIoQuery { query, read_counter, write_counter }
+    }
+}
+
+pub fn poll_disk_io(state: &mut DiskIoQuery) -> (u64, u64) {
+    unsafe {
+        PdhCollectQueryData(state.query);
+
+        let mut read_value = PDH_FMT_COUNTERVALUE::default();
+        let mut write_value = PDH_FMT_COUNTERVALUE::default();
+        PdhGetFormattedCounterValue(state.read_counter, PDH_FMT_LARGE, std::ptr::null_mut(), &mut read_value);
+        PdhGetFormattedCounterValue(state.write_counter, PDH_FMT_LARGE, std::ptr::null_mut(), &mut write_value);
+
+        let read_bytes = if read_value.CStatus == PDH_CSTATUS_VALID_DATA {
+            read_value.Anonymous.largeValue.max(0) as u64
+        } else {
+            0
+        };
+        let write_bytes = if write_value.CStatus == PDH_CSTATUS_VALID_DATA {
+            write_value.Anonymous.largeValue.max(0) as u64
+        } else {
+            0
+        };
+
+        (read_bytes, write_bytes)
+    }
 }
 
 pub fn installed_apps() -> Vec<String> {

@@ -126,6 +126,21 @@ async function refreshRamUsage() {
     }
 }
 
+async function refreshDiskIo() {
+  try {
+    // Rust tuples (u64, u64) are automatically serialized into JavaScript arrays
+    const [readBytes, writeBytes] = await invoke('get_disk_io');
+    
+    // Convert Bytes to Megabytes (1024 * 1024 = 1048576)
+    const readMb = (readBytes / 1048576).toFixed(2);
+    const writeMb = (writeBytes / 1048576).toFixed(2);
+    
+    diskIoDisplay.textContent = `${readMb} R / ${writeMb} W MB/s`;
+  } catch (error) {
+    console.error("Error fetching Disk IO:", error);
+  }
+}
+
 async function initializeApp() {
     try {
         const initialData = await invoke('get_uptime');
@@ -157,6 +172,7 @@ async function initializeApp() {
     refreshCpuUsage();
     refreshCpuSpeed();
     refreshRamUsage();
+    refreshDiskIo();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -168,6 +184,7 @@ async function initializeApp() {
     setInterval(refreshCpuUsage, 1000);
     setInterval(refreshCpuSpeed, 1000);
     setInterval(refreshRamUsage, 4000);
+    setInterval(refreshDiskIo, 1000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

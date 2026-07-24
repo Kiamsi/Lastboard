@@ -12,18 +12,19 @@ pub fn get_uptime() -> UptimeInfo {
 
     // the file has two numbers separated by a space and we only want the first one
     let mut words = uptime_contents.split_whitespace();
+    
     let first_word = match words.next() {
         Some(word) => word,
         None => "0.0", //fallback if the file was empty
     };
 
-    
     let total_seconds = match first_word.parse::<f64>() {
         Ok(decimal_number) => decimal_number.round() as u64,
         Err(_) => 0, 
     };
 
     let time_since_epoch = SystemTime::now().duration_since(UNIX_EPOCH);
+    
     let current_time = match time_since_epoch {
         Ok(duration) => duration.as_secs(),
         Err(_) => 0, 
@@ -79,52 +80,6 @@ pub fn get_listening_ports() -> usize {
     };
     
     count_listening(&tcp4) + count_listening(&tcp6)
-}
-
-pub fn get_cpu_temperature() -> Option<f32> {
-    let entries = match fs::read_dir("/sys/class/hwmon") {
-        Ok(entries) => entries,
-        Err(_) => return None,
-    };
-
-    let known_cpu_sensors = ["coretemp", "k10temp", "zenpower", "cpu_thermal"];
-
-    for entry_result in entries {
-        let entry = match entry_result {
-            Ok(entry) => entry,
-            Err(_) => continue,
-        };
-
-        let name_path = entry.path().join("name");
-        let sensor_name = match fs::read_to_string(&name_path) {
-            Ok(text) => text.trim().to_string(),
-            Err(_) => continue,
-        };
-
-        let mut matched = false;
-        for known_name in known_cpu_sensors {
-            if sensor_name == known_name {
-                matched = true;
-            }
-        }
-        if !matched {
-            continue;
-        }
-
-        
-        let mut number = 1;
-        while number <= 8 {
-            let temp_path = entry.path().join(format!("temp{}_input", number));
-            if let Ok(raw_value) = fs::read_to_string(&temp_path) {
-                if let Ok(millidegrees) = raw_value.trim().parse::<i64>() {
-                    return Some(millidegrees as f32 / 1000.0);
-                }
-            }
-            number += 1;
-        }
-    }
-
-    None
 }
 
 pub fn installed_apps() -> Vec<String> {
@@ -244,4 +199,54 @@ pub fn get_os_name() -> String {
     }
     
     String::from("Linux")
+}
+
+fn real_block_devices() -> Vec<String> {
+    let mut names = Vec::new();
+    let entries = match fs::read_dir("/sys/block") {
+        Ok(e) => e,
+        Err(_) => return names,
+    };
+    for entry_result in entries {
+        let entry = match entry_result {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let name = entry.file_name().to_string_lossy().to_string();
+    
+        if name.starts_with("loop") || name.starts_with("dm-")|| name.starts_with("ram") || name.starts_with("zram")
+        {
+            continue;
+        }
+        names.push(name);
+    }
+    names
+}
+
+pub fn read_disk_totals() -> (u64, u64) {
+    const SECTOR_SIZE: u64 = 512;
+
+    let contents = match fs::read_to_string("/proc/diskstats") {
+        Ok(c) => c,
+        Err(_) => return (0, 0),
+    };
+
+    let devices = real_block_devices();
+    let mut total_read_sectors = 0u64;
+    let mut total_written_sectors = 0u64;
+
+    for line in contents.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() < 10 {
+            continue;
+        }
+        let name = fields[2];
+        if !devices.iter().any(|d| d == name) {
+            continue; 
+        }
+        total_read_sectors += fields[5].parse::<u64>().unwrap_or(0);
+        total_written_sectors += fields[9].parse::<u64>().unwrap_or(0);
+    }
+
+    (total_read_sectors * SECTOR_SIZE, total_written_sectors * SECTOR_SIZE)
 }
