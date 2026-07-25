@@ -45,7 +45,6 @@ fn count_connected(contents: &str) -> usize {
         })
         .count()
 }
-
 pub fn get_open_connections() -> usize {
     let tcp4 = fs::read_to_string("/proc/net/tcp")
         .expect("/proc/net/tcp should always exist");
@@ -57,14 +56,6 @@ pub fn get_open_connections() -> usize {
     }
 
     total
-}
-
-pub fn get_connected_lan_devices() -> usize {
-    let contents = match fs::read_to_string("/proc/net/arp") {
-        Ok(text) => text, Err(_) => return 0,
-    };
-    contents.lines().skip(1)
-    .filter(|line| line.split_whitespace().nth(3) != Some("00:00:00:00:00:00")).count()
 }
 
 pub fn get_listening_ports() -> usize {
@@ -80,6 +71,14 @@ pub fn get_listening_ports() -> usize {
     };
     
     count_listening(&tcp4) + count_listening(&tcp6)
+}
+
+pub fn get_connected_lan_devices() -> usize {
+    let contents = match fs::read_to_string("/proc/net/arp") {
+        Ok(text) => text, Err(_) => return 0,
+    };
+    contents.lines().skip(1)
+    .filter(|line| line.split_whitespace().nth(3) != Some("00:00:00:00:00:00")).count()
 }
 
 pub fn installed_apps() -> Vec<String> {
@@ -339,4 +338,32 @@ pub fn get_last_system_update() -> u64 {
     }
 
     0
+}
+
+pub fn get_monitors() -> usize {
+    let entries = match fs::read_dir("/sys/class/drm") {
+        Ok(e) => e,Err(_) => return 0,
+    };
+
+    let mut count = 0;
+
+    for entry_result in entries {
+        
+        let entry = match entry_result {
+            Ok(e) => e, Err(_) => continue,
+        };
+        let name = entry.file_name().to_string_lossy().to_string();
+
+        
+        if !name.contains('-') {
+            continue;
+        }
+
+        let status = fs::read_to_string(entry.path().join("status")).unwrap_or_default();
+        if status.trim() == "connected" {
+            count += 1;
+        }
+    }
+
+    count
 }

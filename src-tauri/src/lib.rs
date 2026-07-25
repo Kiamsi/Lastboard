@@ -54,59 +54,6 @@ fn get_process_count(state: tauri::State<AppState>) -> usize {
 }
 
 #[tauri::command]
-fn get_network_speed(state: tauri::State<AppState>) -> (u64, u64) {
-    
-    let mut networks = state.networks.lock().unwrap();
-    
-    networks.refresh(true); 
-    
-    let mut bytes_in = 0u64;
-    let mut bytes_out = 0u64;
-    
-    for (_, data) in networks.iter() {
-        bytes_in += data.received();
-        bytes_out += data.transmitted();
-    }
-    (bytes_in, bytes_out)
-}
-
-#[tauri::command]
-fn get_recent_file_os() -> String {
-    #[cfg(target_os = "windows")]
-    {
-        windows::get_recent_file_windows()
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        linux::get_recent_file_linux()
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        macos::get_recent_file_macos()
-    }
-}
-
-#[tauri::command]
-fn get_installed_apps() -> Vec<String> {
-    
-    #[cfg(target_os = "windows")]
-    { 
-        windows::installed_apps() 
-    }
-
-    #[cfg(target_os = "linux")]
-    { 
-        linux::installed_apps() 
-    }
-
-    #[cfg(target_os = "macos")]
-    { 
-        macos::installed_apps() }
-}
-
-#[tauri::command]
 fn get_open_connections() -> usize {
     #[cfg(target_os = "windows")]
     {
@@ -119,6 +66,22 @@ fn get_open_connections() -> usize {
     #[cfg(target_os = "macos")]
     {
         macos::get_open_connections()
+    }
+}
+
+#[tauri::command]
+fn get_listening_ports() -> usize {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_listening_ports()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_listening_ports()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_listening_ports()
     }
 }
 
@@ -139,19 +102,50 @@ fn get_connected_lan_devices() -> usize {
 }
 
 #[tauri::command]
-fn get_listening_ports() -> usize {
-    #[cfg(target_os = "windows")]
-    {
-        windows::get_listening_ports()
+fn get_network_speed(state: tauri::State<AppState>) -> (u64, u64) {
+    
+    let mut networks = state.networks.lock().unwrap();
+    
+    networks.refresh(true); 
+    
+    let mut bytes_in = 0u64;
+    let mut bytes_out = 0u64;
+    
+    for (_, data) in networks.iter() {
+        bytes_in += data.received();
+        bytes_out += data.transmitted();
     }
-    #[cfg(target_os = "linux")]
-    {
-        linux::get_listening_ports()
+    (bytes_in, bytes_out)
+}
+
+#[tauri::command]
+fn get_cpu_usage(state: tauri::State<AppState>) -> f32 {
+    let mut system = state.system.lock().unwrap();
+    system.refresh_cpu_usage();
+    system.global_cpu_usage()
+}
+
+#[tauri::command]
+fn get_cpu_speed(state: tauri::State<AppState>) -> u64 {
+    let mut system = state.system.lock().unwrap();
+    system.refresh_cpu_frequency();
+
+    let cpus = system.cpus();
+    if cpus.is_empty() {
+        return 0;
     }
-    #[cfg(target_os = "macos")]
-    {
-        macos::get_listening_ports()
-    }
+
+    let total: u64 = cpus.iter().map(|c| c.frequency()).sum();
+    total / cpus.len() as u64 // average across all logical cores, in MHz
+}
+
+#[tauri::command]
+fn get_ram_usage(state: tauri::State<AppState>) -> (u64, u64) {
+    let mut system = state.system.lock().unwrap();
+    system.refresh_memory();
+    let used = system.used_memory();
+    let total = system.total_memory();
+    (used, total)
 }
 
 #[tauri::command]
@@ -222,33 +216,21 @@ fn get_os_version() -> String {
 }
 
 #[tauri::command]
-fn get_cpu_usage(state: tauri::State<AppState>) -> f32 {
-    let mut system = state.system.lock().unwrap();
-    system.refresh_cpu_usage();
-    system.global_cpu_usage()
-}
-
-#[tauri::command]
-fn get_cpu_speed(state: tauri::State<AppState>) -> u64 {
-    let mut system = state.system.lock().unwrap();
-    system.refresh_cpu_frequency();
-
-    let cpus = system.cpus();
-    if cpus.is_empty() {
-        return 0;
+fn get_installed_apps() -> Vec<String> {
+    
+    #[cfg(target_os = "windows")]
+    { 
+        windows::installed_apps() 
     }
 
-    let total: u64 = cpus.iter().map(|c| c.frequency()).sum();
-    total / cpus.len() as u64 // average across all logical cores, in MHz
-}
+    #[cfg(target_os = "linux")]
+    { 
+        linux::installed_apps() 
+    }
 
-#[tauri::command]
-fn get_ram_usage(state: tauri::State<AppState>) -> (u64, u64) {
-    let mut system = state.system.lock().unwrap();
-    system.refresh_memory();
-    let used = system.used_memory();
-    let total = system.total_memory();
-    (used, total)
+    #[cfg(target_os = "macos")]
+    { 
+        macos::installed_apps() }
 }
 
 #[tauri::command]
@@ -285,6 +267,42 @@ fn get_last_system_update() -> u64 {
     }
 }
 
+#[tauri::command]
+fn get_monitors() -> usize {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_monitors()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_monitors()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_monitors()
+    }
+}
+
+#[tauri::command]
+fn get_recent_file_os() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_recent_file_windows()
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_recent_file_linux()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_recent_file_macos()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -317,7 +335,9 @@ pub fn run() {
             get_connected_peripherals,
             get_os_version,
             get_last_system_update,
+            get_monitors,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+

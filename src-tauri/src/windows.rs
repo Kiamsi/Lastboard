@@ -301,3 +301,17 @@ pub fn get_last_system_update() -> u64 {
     let stdout = String::from_utf8_lossy(&output.stdout);
     stdout.trim().parse::<u64>().unwrap_or(0)
 }
+
+pub fn get_monitors() -> usize {
+    
+    let cmd_result = Command::new("powershell").arg("-NoProfile").arg("-Command")
+        .arg("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::AllScreens.Count")
+        .output();
+
+    let output = match cmd_result {
+        Ok(out) => out, Err(_) => return 0,
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.trim().parse::<usize>().unwrap_or(0)
+}

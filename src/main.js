@@ -1,20 +1,22 @@
 import { invoke } from '@tauri-apps/api/core';
 
-const bootTimeDisplay = document.getElementById('bootTimeDisplay');
-const uptimeDisplay = document.getElementById('uptimeDisplay');
-const processesDisplay = document.getElementById('processesDisplay');
-const appCountDisplay = document.getElementById('app-count');
-const networkSpeedDisplay = document.getElementById('networkSpeedDisplay');
-const connectionsDisplay = document.getElementById('connectionsDisplay');
-const osNameDisplay = document.getElementById('osNameDisplay');
-const lanDevicesDisplay = document.getElementById('lanDevicesDisplay');
-const listeningPortsDisplay = document.getElementById('listeningPortsDisplay');
-const cpuUsageDisplay = document.getElementById('cpuUsageDisplay');
-const cpuClockSpeedDisplay = document.getElementById('cpuClockSpeedDisplay');
-const ramUsageDisplay = document.getElementById('ramUsageDisplay');
-const peripheralsDisplay = document.getElementById('peripheralsDisplay');
-const osVersionDisplay = document.getElementById('osVersionDisplay');
-const lastUpdateDisplay = document.getElementById('lastUpdateDisplay');
+const bootTimeDisplay = document.getElementById("bootTimeDisplay");
+const uptimeDisplay = document.getElementById("uptimeDisplay");
+const processesDisplay = document.getElementById("processesDisplay");
+const appCountDisplay = document.getElementById("app-count");
+const networkSpeedDisplay = document.getElementById("networkSpeedDisplay");
+const connectionsDisplay = document.getElementById("connectionsDisplay");
+const osNameDisplay = document.getElementById("osNameDisplay");
+const lanDevicesDisplay = document.getElementById("lanDevicesDisplay");
+const listeningPortsDisplay = document.getElementById("listeningPortsDisplay");
+const cpuUsageDisplay = document.getElementById("cpuUsageDisplay");
+const cpuClockSpeedDisplay = document.getElementById("cpuClockSpeedDisplay");
+const ramUsageDisplay = document.getElementById("ramUsageDisplay");
+const diskIoDisplay = document.getElementById("diskIoDisplay");
+const peripheralsDisplay = document.getElementById("peripheralsDisplay");
+const osVersionDisplay = document.getElementById("osVersionDisplay");
+const lastUpdateDisplay = document.getElementById("lastUpdateDisplay");
+const monitorsDisplay = document.getElementById("monitorsDisplay");
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -153,6 +155,16 @@ async function refreshPeripherals() {
     }
 }
 
+async function refreshMonitors() {
+    try {
+        const count = await invoke('get_monitors');
+        if (monitorsDisplay) monitorsDisplay.textContent = count;
+    } catch (error) {
+        console.error('Failed to get monitors count:', error);
+    }
+}
+
+
 async function initializeApp() {
     
     try {
@@ -187,14 +199,15 @@ async function initializeApp() {
     try {
         const updateTimestamp = await invoke('get_last_system_update');
         if (lastUpdateDisplay) {
-            const updateDate = new Date(updateTimestamp * 1000);
-            
-            const year = updateDate.getFullYear();
-            const month = String(updateDate.getMonth() + 1).padStart(2, '0'); 
-            const day = String(updateDate.getDate()).padStart(2, '0');
-            
-            //format standard i like
-            lastUpdateDisplay.textContent = `${year}-${month}-${day}`;
+            if (!updateTimestamp) {
+                lastUpdateDisplay.textContent = 'Unknown';
+            } else {
+                const updateDate = new Date(updateTimestamp * 1000);
+                const year = updateDate.getFullYear();
+                const month = String(updateDate.getMonth() + 1).padStart(2, '0');
+                const day = String(updateDate.getDate()).padStart(2, '0');
+                lastUpdateDisplay.textContent = `${year}-${month}-${day}`;
+            }
         }
     } catch (error) {
         console.error('Failed to fetch last update:', error);
@@ -212,6 +225,7 @@ async function initializeApp() {
     refreshRamUsage();
     refreshDiskIo();
     refreshPeripherals();
+    refreshMonitors();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -225,6 +239,7 @@ async function initializeApp() {
     setInterval(refreshRamUsage, 4000);
     setInterval(refreshDiskIo, 1000);
     setInterval(refreshPeripherals, 60000);
+    setInterval(refreshMonitors, 180000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

@@ -27,6 +27,32 @@
 </div>
 </div>
 
+
+<div class="section-header">Hardware</div>
+<div class="row">
+  <div class="card">
+    <div class="value" id="cpuUsageDisplay">--%</div>
+    <div class="label">CPU Usage</div>
+  </div>
+
+  <div class="card">
+    <div class="value" id="cpuClockSpeedDisplay">-- GHz</div>
+    <div class="label">CPU Clock Speed</div>
+  </div>
+
+  <div class="card">
+  <div class="value" id="ramUsageDisplay">-- / -- GB</div>
+  <div class="label">RAM Usage</div>
+</div>
+</div>
+
+<div class="row">
+  <div class="card">
+    <div class="value" id="diskIoDisplay">-- R / -- W MB/s</div>
+    <div class="label">Disk Usage (Read/Write)</div>
+  </div>
+</div>
+
 <div class="section-header">Network</div>
 <div class="row">
 <div class="card">
@@ -54,31 +80,6 @@
 </div>
 </div>
 
-<div class="section-header">Hardware</div>
-<div class="row">
-  <div class="card">
-    <div class="value" id="cpuUsageDisplay">--%</div>
-    <div class="label">CPU Usage</div>
-  </div>
-
-  <div class="card">
-    <div class="value" id="cpuClockSpeedDisplay">-- GHz</div>
-    <div class="label">CPU Clock Speed</div>
-  </div>
-
-  <div class="card">
-  <div class="value" id="ramUsageDisplay">-- / -- GB</div>
-  <div class="label">RAM Usage</div>
-</div>
-</div>
-
-<div class="row">
-  <div class="card">
-    <div class="value" id="diskIoDisplay">-- R / -- W MB/s</div>
-    <div class="label">Disk Usage (Read/Write)</div>
-  </div>
-</div>
-
 <div class="section-header">System</div>
 <div class="row">
     <div class="card">
@@ -100,14 +101,20 @@
 <div class="row">
 
   <div class="card">
-        <div class="value" id="lastUpdateDisplay">--</div>
-        <div class="label">Last System Update</div>
-    </div>
+    <div class="value" id="peripheralsDisplay">__</div>
+    <div class="label">Connected Peripherals</div>
+  </div>
+
+  <div class="card">
+      <div class="value" id="lastUpdateDisplay">__</div>
+      <div class="label">Last System Update</div>
+  </div>
     
-    <div class="card">
-        <div class="value" id="peripheralsDisplay">--</div>
-        <div class="label">Connected Peripherals</div>
-    </div>
+  <div class="card">
+    <div class="value" id =monitorsDisplay>__</div>
+    <div class="label">Monitors</div>
+  </div>
+
 </div>
 
 <script type="module" src="main.js"></script>
