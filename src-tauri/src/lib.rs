@@ -267,6 +267,24 @@ fn get_connected_peripherals() -> usize {
     }
 }
 
+#[tauri::command]
+fn get_last_system_update() -> u64 {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_last_system_update()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_last_system_update()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_last_system_update()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -298,6 +316,7 @@ pub fn run() {
             get_disk_io,
             get_connected_peripherals,
             get_os_version,
+            get_last_system_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

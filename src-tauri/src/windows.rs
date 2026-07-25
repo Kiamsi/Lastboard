@@ -286,3 +286,18 @@ pub fn get_connected_peripherals() -> usize {
     let stdout = String::from_utf8_lossy(&output.stdout);
     stdout.trim().parse::<usize>().unwrap_or(0)
 }
+
+pub fn get_last_system_update() -> u64 {
+    let cmd_result = Command::new("powershell")
+        .arg("-NoProfile")
+        .arg("-Command")
+        .arg("$s = New-Object -ComObject Microsoft.Update.Session; $r = $s.CreateUpdateSearcher(); $h = $r.QueryHistory(0, $r.GetTotalHistoryCount()); $last = $h | Where-Object { $_.ResultCode -eq 2 -and $_.Date } | Sort-Object Date -Descending | Select-Object -First 1; if ($last) { ([DateTimeOffset]$last.Date).ToUnixTimeSeconds() }")
+        .output();
+
+    let output = match cmd_result {
+        Ok(out) => out, Err(_) => return 0,
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.trim().parse::<u64>().unwrap_or(0)
+}

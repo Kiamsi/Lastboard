@@ -14,6 +14,7 @@ const cpuClockSpeedDisplay = document.getElementById('cpuClockSpeedDisplay');
 const ramUsageDisplay = document.getElementById('ramUsageDisplay');
 const peripheralsDisplay = document.getElementById('peripheralsDisplay');
 const osVersionDisplay = document.getElementById('osVersionDisplay');
+const lastUpdateDisplay = document.getElementById('lastUpdateDisplay');
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -181,6 +182,22 @@ async function initializeApp() {
         }
     } catch (error) {
         console.error('Failed to fetch OS version:', error);
+    }
+
+    try {
+        const updateTimestamp = await invoke('get_last_system_update');
+        if (lastUpdateDisplay) {
+            const updateDate = new Date(updateTimestamp * 1000);
+            
+            const year = updateDate.getFullYear();
+            const month = String(updateDate.getMonth() + 1).padStart(2, '0'); 
+            const day = String(updateDate.getDate()).padStart(2, '0');
+            
+            //format standard i like
+            lastUpdateDisplay.textContent = `${year}-${month}-${day}`;
+        }
+    } catch (error) {
+        console.error('Failed to fetch last update:', error);
     }
 
     refreshUptime();

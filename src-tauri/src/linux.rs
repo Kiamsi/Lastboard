@@ -318,3 +318,25 @@ pub fn get_connected_peripherals() -> usize {
 
     count
 }
+
+pub fn get_last_system_update() -> u64 {
+    let paths = [
+        "/var/lib/pacman/local",
+        "/var/log/apt/history.log",
+        "/var/lib/rpm",
+        "/var/log/zypper.log",
+        "/var/log/dpkg.log",
+    ];
+
+    for path in paths {
+        if let Ok(metadata) = fs::metadata(path) {
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(duration) = modified.duration_since(UNIX_EPOCH) {
+                    return duration.as_secs();
+                }
+            }
+        }
+    }
+
+    0
+}
