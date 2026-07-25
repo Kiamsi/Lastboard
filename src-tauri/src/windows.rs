@@ -29,7 +29,6 @@ pub fn get_uptime() -> UptimeInfo {
 const TCP_ESTABLISHED: u32 = 5;
 
 pub fn get_open_connections() -> usize {
-    
     let mut total = 0;
 
     unsafe {
@@ -37,6 +36,8 @@ pub fn get_open_connections() -> usize {
         let mut size: u32 = 0;
         GetTcpTable2(std::ptr::null_mut(), &mut size, 0);
         if size > 0 {
+           
+            size += 256;
             let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
             let table_ptr = buffer.as_mut_ptr() as *mut MIB_TCPTABLE2;
 
@@ -51,6 +52,7 @@ pub fn get_open_connections() -> usize {
         let mut size: u32 = 0;
         GetTcp6Table2(std::ptr::null_mut(), &mut size, 0);
         if size > 0 {
+            size += 256;
             let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
             let table_ptr = buffer.as_mut_ptr() as *mut MIB_TCP6TABLE2;
 
@@ -71,10 +73,10 @@ pub fn get_listening_ports() -> usize {
     let mut total = 0;
 
     unsafe {
-        // ipv4
         let mut size: u32 = 0;
         GetTcpTable2(std::ptr::null_mut(), &mut size, 0);
         if size > 0 {
+            size += 256;
             let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
             let table_ptr = buffer.as_mut_ptr() as *mut MIB_TCPTABLE2;
 
@@ -85,10 +87,10 @@ pub fn get_listening_ports() -> usize {
             }
         }
 
-        // ipv6
         let mut size: u32 = 0;
         GetTcp6Table2(std::ptr::null_mut(), &mut size, 0);
         if size > 0 {
+            size += 256;
             let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
             let table_ptr = buffer.as_mut_ptr() as *mut MIB_TCP6TABLE2;
 
@@ -110,13 +112,13 @@ pub fn get_connected_lan_devices() -> usize {
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     stdout.lines()
         .filter(|line| {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            parts.len() == 3 
-                && parts[1].contains('-') 
-                && parts[1] != "00-00-00-00-00-00" 
+            parts.len() == 3
+                && parts[1].contains('-')
+                && parts[1] != "00-00-00-00-00-00"
                 && parts[1] != "ff-ff-ff-ff-ff-ff"
         })
         .count()
@@ -150,7 +152,7 @@ pub fn init_disk_io_query() -> DiskIoQuery {
         PdhAddCounterW(query, read_path.as_ptr(), 0, &mut read_counter);
         PdhAddCounterW(query, write_path.as_ptr(), 0, &mut write_counter);
 
-        
+
         PdhCollectQueryData(query);
 
         DiskIoQuery { query, read_counter, write_counter }
@@ -161,8 +163,8 @@ pub fn poll_disk_io(state: &mut DiskIoQuery) -> (u64, u64) {
     unsafe {
         PdhCollectQueryData(state.query);
 
-        let mut read_value = PDH_FMT_COUNTERVALUE::default();
-        let mut write_value = PDH_FMT_COUNTERVALUE::default();
+        let mut read_value: PDH_FMT_COUNTERVALUE = std::mem::zeroed();
+        let mut write_value: PDH_FMT_COUNTERVALUE = std::mem::zeroed();
         PdhGetFormattedCounterValue(state.read_counter, PDH_FMT_LARGE, std::ptr::null_mut(), &mut read_value);
         PdhGetFormattedCounterValue(state.write_counter, PDH_FMT_LARGE, std::ptr::null_mut(), &mut write_value);
 
@@ -271,19 +273,19 @@ pub fn get_os_name() -> String {
         .arg("-Command")
         .arg("(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').ProductName")
         .output();
-        
+
     if cmd_result.is_err() {
         return String::from("Windows");
     }
-    
+
     let output = cmd_result.unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let name = stdout.trim();
-    
+
     if name.is_empty() {
         return String::from("Windows");
     }
-    
+
     String::from(name)
 }
 
@@ -333,7 +335,8 @@ pub fn get_last_system_update() -> u64 {
         .output();
 
     let output = match cmd_result {
-        Ok(out) => out, Err(_) => return 0,
+        Ok(out) => out,
+        Err(_) => return 0,
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -341,13 +344,13 @@ pub fn get_last_system_update() -> u64 {
 }
 
 pub fn get_monitors() -> usize {
-    
     let cmd_result = Command::new("powershell").arg("-NoProfile").arg("-Command")
         .arg("Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::AllScreens.Count")
         .output();
 
     let output = match cmd_result {
-        Ok(out) => out, Err(_) => return 0,
+        Ok(out) => out,
+        Err(_) => return 0,
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
