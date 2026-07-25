@@ -285,23 +285,6 @@ fn get_monitors() -> usize {
     }
 }
 
-#[tauri::command]
-fn get_recent_file_os() -> String {
-    #[cfg(target_os = "windows")]
-    {
-        windows::get_recent_file_windows()
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        linux::get_recent_file_linux()
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        macos::get_recent_file_macos()
-    }
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -319,7 +302,6 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(app_state) 
         .invoke_handler(tauri::generate_handler![
-            get_recent_file_os, 
             get_uptime, 
             get_process_count,
             get_network_speed,
@@ -340,4 +322,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

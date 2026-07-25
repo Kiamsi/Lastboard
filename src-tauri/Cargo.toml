@@ -22,5 +22,7 @@ sysinfo = "0.39.5"
 windows-sys = { version = "0.52", features = [
     "Win32_System_SystemInformation",
     "Win32_NetworkManagement_IpHelper",
+    "Win32_System_Performance",
+    "Win32_Networking_WinSock",
 ] }
 winreg = "0.52"

@@ -65,6 +65,44 @@ pub fn get_open_connections() -> usize {
     total
 }
 
+const TCP_LISTEN: u32 = 2;
+
+pub fn get_listening_ports() -> usize {
+    let mut total = 0;
+
+    unsafe {
+        // ipv4
+        let mut size: u32 = 0;
+        GetTcpTable2(std::ptr::null_mut(), &mut size, 0);
+        if size > 0 {
+            let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
+            let table_ptr = buffer.as_mut_ptr() as *mut MIB_TCPTABLE2;
+
+            if GetTcpTable2(table_ptr, &mut size, 0) == 0 {
+                let table = &*table_ptr;
+                let rows = std::slice::from_raw_parts(table.table.as_ptr(), table.dwNumEntries as usize);
+                total += rows.iter().filter(|row| row.dwState == TCP_LISTEN).count();
+            }
+        }
+
+        // ipv6
+        let mut size: u32 = 0;
+        GetTcp6Table2(std::ptr::null_mut(), &mut size, 0);
+        if size > 0 {
+            let mut buffer = vec![0u32; (size as usize).div_ceil(4)];
+            let table_ptr = buffer.as_mut_ptr() as *mut MIB_TCP6TABLE2;
+
+            if GetTcp6Table2(table_ptr, &mut size, 0) == 0 {
+                let table = &*table_ptr;
+                let rows = std::slice::from_raw_parts(table.table.as_ptr(), table.dwNumEntries as usize);
+                total += rows.iter().filter(|row| row.State as u32 == TCP_LISTEN).count();
+            }
+        }
+    }
+
+    total
+}
+
 pub fn get_connected_lan_devices() -> usize {
     let output = match Command::new("arp").arg("-a").output() {
         Ok(out) => out,
