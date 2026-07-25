@@ -73,21 +73,33 @@
 <div class="row">
   <div class="card">
     <div class="value" id="diskIoDisplay">-- R / -- W MB/s</div>
-    <div class="label">Disk I/O (Read/Write)</div>
+    <div class="label">Disk Usage (Read/Write)</div>
   </div>
 </div>
 
 <div class="section-header">System</div>
 <div class="row">
-<div class="card">
-<div class="value" id="osNameDisplay">--</div>
-<div class="label">Operating System</div>
+    <div class="card">
+        <div class="value" id="osNameDisplay">--</div>
+        <div class="label">Operating system</div>
+    </div>
+
+    <div class="card">
+        <div class="value" id="osVersionDisplay">--</div>
+        <div class="label">OS Version</div>
+    </div>
+
+    <div class="card">
+        <div class="value" id="app-count">--</div>
+        <div class="label">Apps installed</div>
+    </div>
 </div>
 
-<div class="card">
-<div class="value" id="app-count">--</div>
-<div class="label">Apps Installed</div>
-</div>
+<div class="row">
+    <div class="card">
+        <div class="value" id="peripheralsDisplay">--</div>
+        <div class="label">Connected Peripherals</div>
+    </div>
 </div>
 
 <script type="module" src="main.js"></script>

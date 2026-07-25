@@ -248,3 +248,41 @@ pub fn get_os_name() -> String {
     
     String::from(name)
 }
+
+pub fn get_os_version() -> String {
+    let cmd_result = Command::new("powershell")
+        .arg("-NoProfile")
+        .arg("-Command")
+        .arg("(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').DisplayVersion")
+        .output();
+
+    if cmd_result.is_err() {
+        return String::from("Unknown");
+    }
+
+    let output = cmd_result.unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let version = stdout.trim();
+
+    if version.is_empty() {
+        return String::from("Unknown");
+    }
+
+    String::from(version)
+}
+
+pub fn get_connected_peripherals() -> usize {
+    let cmd_result = Command::new("powershell")
+        .arg("-NoProfile")
+        .arg("-Command")
+        .arg("(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like 'USB\\*' -and $_.Class -ne 'USB' } | Measure-Object).Count")
+        .output();
+
+    let output = match cmd_result {
+        Ok(out) => out,
+        Err(_) => return 0,
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.trim().parse::<usize>().unwrap_or(0)
+}

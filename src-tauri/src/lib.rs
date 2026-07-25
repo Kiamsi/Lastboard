@@ -204,6 +204,24 @@ fn get_os_name() -> String {
 }
 
 #[tauri::command]
+fn get_os_version() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_os_version()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_os_version()
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_os_version()
+    }
+}
+
+#[tauri::command]
 fn get_cpu_usage(state: tauri::State<AppState>) -> f32 {
     let mut system = state.system.lock().unwrap();
     system.refresh_cpu_usage();
@@ -231,6 +249,22 @@ fn get_ram_usage(state: tauri::State<AppState>) -> (u64, u64) {
     let used = system.used_memory();
     let total = system.total_memory();
     (used, total)
+}
+
+#[tauri::command]
+fn get_connected_peripherals() -> usize {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_connected_peripherals()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_connected_peripherals()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_connected_peripherals()
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -262,6 +296,8 @@ pub fn run() {
             get_cpu_speed,
             get_ram_usage,
             get_disk_io,
+            get_connected_peripherals,
+            get_os_version,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

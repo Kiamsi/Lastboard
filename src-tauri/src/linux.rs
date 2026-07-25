@@ -201,6 +201,38 @@ pub fn get_os_name() -> String {
     String::from("Linux")
 }
 
+pub fn get_os_version() -> String {
+    let file_result = std::fs::read_to_string("/etc/os-release");
+
+    if file_result.is_err() {
+        return String::from("Unknown");
+    }
+
+    let contents = file_result.unwrap();
+
+    for line in contents.lines() {
+        if line.starts_with("VERSION_ID=") {
+            let mut version = line.replace("VERSION_ID=", "");
+            version = version.replace("\"", "");
+            version = version.replace("'", "");
+            return version;
+        }
+    }
+
+    //rolling releases like arch don't set version id but do set build id so im going with it
+    for line in contents.lines() {
+        if line.starts_with("BUILD_ID=") {
+            let build = line.replace("BUILD_ID=", "").replace("\"", "").replace("'", "");
+            if build.eq_ignore_ascii_case("rolling") {
+                return String::from("Rolling Release");
+            }
+            return build;
+        }
+    }
+
+    String::from("Unknown")
+}
+
 fn real_block_devices() -> Vec<String> {
     let mut names = Vec::new();
     let entries = match fs::read_dir("/sys/block") {
@@ -249,4 +281,40 @@ pub fn read_disk_totals() -> (u64, u64) {
     }
 
     (total_read_sectors * SECTOR_SIZE, total_written_sectors * SECTOR_SIZE)
+}
+
+pub fn get_connected_peripherals() -> usize {
+    
+    let entries = match fs::read_dir("/sys/bus/usb/devices") {
+        Ok(e) => e,
+        Err(_) => return 0,
+    };
+
+    let mut count = 0;
+
+    for entry_result in entries {
+        
+        let entry = match entry_result {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        let name = entry.file_name().to_string_lossy().to_string();
+
+        if name.contains(':') {
+            continue;
+        }
+
+        if name.starts_with("usb") {
+            continue;
+        }
+
+        let class = fs::read_to_string(entry.path().join("bDeviceClass")).unwrap_or_default();
+        if class.trim() == "09" {
+            continue;
+        }
+
+        count += 1;
+    }
+
+    count
 }

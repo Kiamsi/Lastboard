@@ -12,6 +12,8 @@ const listeningPortsDisplay = document.getElementById('listeningPortsDisplay');
 const cpuUsageDisplay = document.getElementById('cpuUsageDisplay');
 const cpuClockSpeedDisplay = document.getElementById('cpuClockSpeedDisplay');
 const ramUsageDisplay = document.getElementById('ramUsageDisplay');
+const peripheralsDisplay = document.getElementById('peripheralsDisplay');
+const osVersionDisplay = document.getElementById('osVersionDisplay');
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -128,10 +130,10 @@ async function refreshRamUsage() {
 
 async function refreshDiskIo() {
   try {
-    // Rust tuples (u64, u64) are automatically serialized into JavaScript arrays
+    
     const [readBytes, writeBytes] = await invoke('get_disk_io');
     
-    // Convert Bytes to Megabytes (1024 * 1024 = 1048576)
+    //bytes to megabytes
     const readMb = (readBytes / 1048576).toFixed(2);
     const writeMb = (writeBytes / 1048576).toFixed(2);
     
@@ -141,7 +143,17 @@ async function refreshDiskIo() {
   }
 }
 
+async function refreshPeripherals() {
+    try {
+        const count = await invoke('get_connected_peripherals');
+        if (peripheralsDisplay) peripheralsDisplay.textContent = count;
+    } catch (error) {
+        console.error('failed to get peripheral devices:', error);
+    }
+}
+
 async function initializeApp() {
+    
     try {
         const initialData = await invoke('get_uptime');
         if (bootTimeDisplay) {
@@ -162,6 +174,15 @@ async function initializeApp() {
         console.error('Failed to fetch OS name:', error);
     }
 
+    try {
+        const osVersion = await invoke('get_os_version');
+        if (osVersionDisplay) {
+            osVersionDisplay.textContent = osVersion;
+        }
+    } catch (error) {
+        console.error('Failed to fetch OS version:', error);
+    }
+
     refreshUptime();
     refreshProcessCount();
     refreshAppCount();
@@ -173,6 +194,7 @@ async function initializeApp() {
     refreshCpuSpeed();
     refreshRamUsage();
     refreshDiskIo();
+    refreshPeripherals();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -185,6 +207,7 @@ async function initializeApp() {
     setInterval(refreshCpuSpeed, 1000);
     setInterval(refreshRamUsage, 4000);
     setInterval(refreshDiskIo, 1000);
+    setInterval(refreshPeripherals, 60000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

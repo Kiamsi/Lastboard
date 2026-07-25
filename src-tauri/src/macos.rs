@@ -55,3 +55,33 @@ pub fn get_installed_apps() -> Vec<String> {
     
     return apps;
 }
+
+pub fn get_connected_peripherals() -> usize {
+    let cmd_result = std::process::Command::new("system_profiler")
+        .arg("SPUSBDataType")
+        .output();
+
+    let output = match cmd_result {
+        Ok(out) => out,
+        Err(_) => return 0,
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    const FIELD_LABELS: &[&str] = &[
+        "Product ID:", "Vendor ID:", "Version:", "Serial Number:", "Speed:",
+        "Manufacturer:", "Location ID:", "Current Available (mA):",
+        "Current Required (mA):", "Extra Operating Current (mA):",
+        "Capacity:", "Removable Media:", "Detachable Drive:", "BSD Name:",
+        "Partition Map Type:", "Volumes:", "Media:", "USB:",
+    ];
+
+    stdout
+        .lines()
+        .map(|line| line.trim())
+        .filter(|line| line.ends_with(':'))
+        .filter(|line| !FIELD_LABELS.contains(line))
+        .filter(|line| !line.ends_with("Bus:"))
+        .filter(|line| !line.to_lowercase().contains("hub"))
+        .count()
+}
