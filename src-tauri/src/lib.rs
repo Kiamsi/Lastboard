@@ -403,6 +403,7 @@ pub fn run() {
             get_os_version,
             get_last_system_update,
             get_monitors,get_last_disk_writer,
+            get_last_started_process,
             get_last_started_process_running,
         ])
         .run(tauri::generate_context!())
