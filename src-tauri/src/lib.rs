@@ -21,6 +21,8 @@ pub struct AppState {
     pub disk_io: Mutex<crate::windows::DiskIoQuery>,
     #[cfg(not(target_os = "windows"))]
     pub last_disk_io: Mutex<Option<(u64, u64)>>,
+    #[cfg(target_os = "linux")]
+    pub disk_writer_history: Mutex<std::collections::HashMap<i32, u64>>,
 }
 
 #[tauri::command]
@@ -269,6 +271,7 @@ fn get_last_system_update() -> u64 {
 
 #[tauri::command]
 fn get_monitors() -> usize {
+    
     #[cfg(target_os = "windows")]
     {
         windows::get_monitors()
@@ -283,6 +286,23 @@ fn get_monitors() -> usize {
     {
         macos::get_monitors()
     }
+
+    
+}
+
+#[tauri::command]
+fn get_last_disk_writer(state: tauri::State<AppState>) -> String {
+    
+    #[cfg(target_os = "linux")]
+    {
+        let mut history = state.disk_writer_history.lock().unwrap();
+        linux::get_last_disk_writer(&mut history)
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        String::from("not implemented yet")
+    }
 }
 
 
@@ -296,6 +316,8 @@ pub fn run() {
         last_disk_io: Mutex::new(None),
         #[cfg(target_os = "windows")]
         disk_io: Mutex::new(windows::init_disk_io_query()),
+        #[cfg(target_os = "linux")]
+        disk_writer_history: Mutex::new(std::collections::HashMap::new()),
     };
 
     tauri::Builder::default()
@@ -317,7 +339,7 @@ pub fn run() {
             get_connected_peripherals,
             get_os_version,
             get_last_system_update,
-            get_monitors,
+            get_monitors,get_last_disk_writer,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

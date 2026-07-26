@@ -341,6 +341,7 @@ pub fn get_last_system_update() -> u64 {
 }
 
 pub fn get_monitors() -> usize {
+    
     let entries = match fs::read_dir("/sys/class/drm") {
         Ok(e) => e,Err(_) => return 0,
     };
@@ -366,4 +367,87 @@ pub fn get_monitors() -> usize {
     }
 
     count
+}
+
+use std::collections::HashMap;
+
+pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
+   
+    let proc_dir = match std::fs::read_dir("/proc") {
+        Ok(dir) => dir,
+        Err(_) => return String::from("can't read /proc"),
+    };
+
+    let mut busiest_pid: i32 = 0;
+    
+    let mut busiest_delta: u64 = 0;
+    
+    let mut new_totals: HashMap<i32, u64> = HashMap::new();
+
+    for entry in proc_dir {
+        
+        let entry = match entry {
+            Ok(e) => e, Err(_) => continue,
+        };
+
+        let file_name = entry.file_name();
+        
+        let name_str = file_name.to_string_lossy();
+
+        let pid: i32 = match name_str.parse() {
+            Ok(p) => p, Err(_) => continue, 
+        };
+
+        let io_path = format!("/proc/{}/io", pid);
+       
+        let contents = match std::fs::read_to_string(&io_path) {
+            Ok(text) => text, Err(_) => continue, 
+        };
+
+        let mut write_bytes: u64 = 0;
+        
+        for line in contents.lines() {
+            
+            if line.starts_with("write_bytes:") {
+                
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                
+                if parts.len() == 2 {
+                    
+                    if let Ok(value) = parts[1].parse::<u64>() {
+                        write_bytes = value;
+                    }
+                }
+                break;
+            }
+        }
+
+        new_totals.insert(pid, write_bytes);
+
+        let previous_value = match previous_totals.get(&pid) {
+            Some(value) => *value, None => write_bytes,
+        };
+
+        if write_bytes > previous_value {
+            let delta = write_bytes - previous_value;
+            if delta > busiest_delta {
+                busiest_delta = delta;
+                busiest_pid = pid;
+            }
+        }
+    }
+
+    *previous_totals = new_totals;
+
+    if busiest_pid == 0 {
+        return String::from("no disk writes since last check");
+    }
+
+    let comm_path = format!("/proc/{}/comm", busiest_pid);
+    
+    let process_name = match std::fs::read_to_string(&comm_path) {
+        Ok(name) => name.trim().to_string(),  Err(_) => String::from("unknown"),
+    };
+
+    format!("{} (pid {})", process_name, busiest_pid)
 }

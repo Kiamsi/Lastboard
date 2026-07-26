@@ -18,6 +18,10 @@ const osVersionDisplay = document.getElementById("osVersionDisplay");
 const lastUpdateDisplay = document.getElementById("lastUpdateDisplay");
 const monitorsDisplay = document.getElementById("monitorsDisplay");
 
+// New elements for the disk writer button and tooltip
+const diskWriterBtn = document.getElementById("diskWriterBtn");
+const diskWriterTooltip = document.getElementById("diskWriterTooltip");
+
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -164,7 +168,6 @@ async function refreshMonitors() {
     }
 }
 
-
 async function initializeApp() {
     
     try {
@@ -211,6 +214,34 @@ async function initializeApp() {
         }
     } catch (error) {
         console.error('Failed to fetch last update:', error);
+    }
+
+    // Hover listener for the disk writer button with 1-second refresh
+    if (diskWriterBtn && diskWriterTooltip) {
+        let diskWriterInterval;
+
+        // Create a helper function to fetch and update the text
+        async function updateDiskWriterTooltip() {
+            try {
+                const processInfo = await invoke('get_last_disk_writer');
+                diskWriterTooltip.textContent = processInfo;
+            } catch (error) {
+                console.error("Error fetching last disk writer:", error);
+                diskWriterTooltip.textContent = 'Error fetching data';
+            }
+        }
+
+        // Start the loop when the mouse enters
+        diskWriterBtn.addEventListener('mouseenter', () => {
+            diskWriterTooltip.textContent = 'Loading...';
+            updateDiskWriterTooltip(); // Fetch immediately the first time
+            diskWriterInterval = setInterval(updateDiskWriterTooltip, 1000); // Repeat every 1000ms
+        });
+
+        // Stop the loop when the mouse leaves
+        diskWriterBtn.addEventListener('mouseleave', () => {
+            clearInterval(diskWriterInterval);
+        });
     }
 
     refreshUptime();
