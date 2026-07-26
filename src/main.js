@@ -17,8 +17,7 @@ const peripheralsDisplay = document.getElementById("peripheralsDisplay");
 const osVersionDisplay = document.getElementById("osVersionDisplay");
 const lastUpdateDisplay = document.getElementById("lastUpdateDisplay");
 const monitorsDisplay = document.getElementById("monitorsDisplay");
-
-// New elements for the disk writer button and tooltip
+const lastProcessRunning = document.getElementById("lastProcessStillRunning");
 const diskWriterBtn = document.getElementById("diskWriterBtn");
 const diskWriterTooltip = document.getElementById("diskWriterTooltip");
 
@@ -168,6 +167,18 @@ async function refreshMonitors() {
     }
 }
 
+async function refreshLastStartedProcessRunning() {
+    try {
+        const appName = await invoke('get_last_started_process_running');
+        if (lastProcessRunning) {
+            lastProcessRunning.textContent = appName;
+        }
+    } catch (error) {
+        console.error("Couldn't get last launched app", error);
+        if (lastProcessRunning) lastProcessRunning.textContent = 'Error';
+    }
+}
+
 async function initializeApp() {
     
     try {
@@ -215,12 +226,10 @@ async function initializeApp() {
     } catch (error) {
         console.error('Failed to fetch last update:', error);
     }
-
-    // Hover listener for the disk writer button with 1-second refresh
+  
     if (diskWriterBtn && diskWriterTooltip) {
         let diskWriterInterval;
 
-        // Create a helper function to fetch and update the text
         async function updateDiskWriterTooltip() {
             try {
                 const processInfo = await invoke('get_last_disk_writer');
@@ -231,14 +240,12 @@ async function initializeApp() {
             }
         }
 
-        // Start the loop when the mouse enters
         diskWriterBtn.addEventListener('mouseenter', () => {
             diskWriterTooltip.textContent = 'Loading...';
-            updateDiskWriterTooltip(); // Fetch immediately the first time
-            diskWriterInterval = setInterval(updateDiskWriterTooltip, 1000); // Repeat every 1000ms
+            updateDiskWriterTooltip(); 
+            diskWriterInterval = setInterval(updateDiskWriterTooltip, 1000);
         });
 
-        // Stop the loop when the mouse leaves
         diskWriterBtn.addEventListener('mouseleave', () => {
             clearInterval(diskWriterInterval);
         });
@@ -257,6 +264,7 @@ async function initializeApp() {
     refreshDiskIo();
     refreshPeripherals();
     refreshMonitors();
+    refreshLastStartedProcessRunning();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -271,6 +279,7 @@ async function initializeApp() {
     setInterval(refreshDiskIo, 1000);
     setInterval(refreshPeripherals, 60000);
     setInterval(refreshMonitors, 180000);
+    setInterval(refreshLastStartedProcessRunning, 5000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

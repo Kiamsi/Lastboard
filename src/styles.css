@@ -101,3 +101,65 @@ body {
     visibility: visible;
     opacity: 1;
 }
+
+.peek-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 28px; 
+  z-index: 20;
+}
+
+.side-tab {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%); 
+  width: 28px; 
+  height: 96px;
+  background: transparent;
+  border: 2px solid #e8e8e8;
+  border-left: none;
+  border-radius: 0 12px 12px 0;
+  color: #e8e8e8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.side-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.side-tab svg {
+  transition: transform 0.3s ease;
+}
+
+.peek-zone:hover .side-tab svg {
+  transform: rotate(180deg);
+}
+
+.page-secondary {
+  position: absolute;
+  top: 0;
+  left: 0; 
+  width: 420px;
+  height: 100%;
+  background: #0d0d0d;
+  border-right: 1px solid #333; 
+  padding: 24px;
+  overflow-y: auto;
+  transform: translateX(-100%); 
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.peek-zone:hover .page-secondary {
+  transform: translateX(0);
+}
+
+.hiddenSectionValue{
+  font-size: 2em;
+}

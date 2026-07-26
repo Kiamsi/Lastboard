@@ -305,24 +305,67 @@ fn get_last_disk_writer(state: tauri::State<AppState>) -> String {
     }
 }
 
-//last launched app that's STILL running 
 #[tauri::command]
-fn get_last_launched_app(state: tauri::State<AppState>) -> String {
+fn get_last_started_process(state: tauri::State<AppState>) -> String {
+    let mut system = state.system.lock().unwrap();
+
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        sysinfo::ProcessRefreshKind::nothing().without_tasks(),
+    );
+
+    let mut newest_start_time: u64 = 0;
+    let mut newest_name = String::new();
+    let mut newest_pid = String::new();
+    let mut found_any = false;
+
+    for (pid, process) in system.processes() {
+        let start_time = process.start_time();
+        if !found_any || start_time > newest_start_time {
+            newest_start_time = start_time;
+            newest_name = process.name().to_string_lossy().to_string();
+            newest_pid = pid.to_string();
+            found_any = true;
+        }
+    }
+
+    if !found_any {
+        return String::from("no processes found");
+    }
+
+    format!("{} (pid {})", newest_name, newest_pid)
+}
+
+#[tauri::command]
+fn get_last_started_process_running(state: tauri::State<AppState>) -> String {
     let mut system = state.system.lock().unwrap();
 
     let specifics = sysinfo::ProcessRefreshKind::nothing().with_exe(sysinfo::UpdateKind::OnlyIfNotSet);
     system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, specifics);
 
-    let newest = system.processes().values().max_by_key(|p| p.start_time());
-
-    match newest {
-        Some(process) => process
-            .exe()
-            .and_then(|path| path.file_name())
-            .map(|name| name.to_string_lossy().into_owned())
-            .unwrap_or_else(|| process.name().to_string_lossy().into_owned()),
-        None => String::from("Unknown"),
+    let mut newest: Option<&sysinfo::Process> = None;
+    for process in system.processes().values() {
+        let is_newer = match newest {
+            None => true,
+            Some(current) => process.start_time() >= current.start_time(),
+        };
+        if is_newer {
+            newest = Some(process);
+        }
     }
+
+    let process = match newest {
+        Some(p) => p, None => return String::from("Unknown"),
+    };
+
+    if let Some(exe_path) = process.exe() {
+        if let Some(file_name) = exe_path.file_name() {
+            return file_name.to_string_lossy().into_owned();
+        }
+    }
+
+    process.name().to_string_lossy().into_owned()
 }
 
 
@@ -360,7 +403,7 @@ pub fn run() {
             get_os_version,
             get_last_system_update,
             get_monitors,get_last_disk_writer,
-            get_last_launched_app,
+            get_last_started_process_running,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
