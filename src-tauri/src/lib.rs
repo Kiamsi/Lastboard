@@ -337,6 +337,25 @@ fn get_last_started_process(state: tauri::State<AppState>) -> String {
     format!("{}", newest_name,)
 }
 
+#[tauri::command]
+fn get_last_sleep_time() -> String {
+    
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_last_sleep_time()
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        String::from("not implemented yet")
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        String::from("not implemented yet")
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -372,6 +391,7 @@ pub fn run() {
             get_last_system_update,
             get_monitors,get_last_disk_writer,
             get_last_started_process,
+            get_last_sleep_time,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

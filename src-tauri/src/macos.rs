@@ -230,3 +230,37 @@ pub fn read_disk_totals() -> (u64, u64) {
 
     (total_read, total_written)
 }
+
+pub fn get_last_sleep_time() -> String {
+    let output = match Command::new("pmset").arg("-g").arg("log").output() {
+        Ok(result) => result,
+        Err(_) => return String::from("could not run pmset"),
+    };
+
+    let log_text = String::from_utf8_lossy(&output.stdout);
+
+    let mut last_sleep_date = String::new();
+    let mut last_sleep_time = String::new();
+
+    for line in log_text.lines() {
+        if line.contains("Maintenance") {
+            continue; // Power Nap background cycle, not a real user-facing sleep
+        }
+
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() < 4 {
+            continue;
+        }
+
+        if fields[3] == "Sleep" {
+            last_sleep_date = fields[0].to_string();
+            last_sleep_time = fields[1].to_string();
+        }
+    }
+
+    if last_sleep_date.is_empty() {
+        return String::from("no sleep event found in the log");
+    }
+
+    format!("{} {}", last_sleep_date, last_sleep_time)
+}

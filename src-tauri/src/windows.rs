@@ -9,6 +9,7 @@ use windows_sys::Win32::System::Performance::{
     PdhAddCounterW, PdhCollectQueryData, PdhGetFormattedCounterValue, PdhOpenQueryW,
     PDH_CSTATUS_VALID_DATA, PDH_FMT_COUNTERVALUE, PDH_FMT_LARGE, PDH_HCOUNTER, PDH_HQUERY,
 };
+use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
 
 pub fn get_uptime() -> UptimeInfo {
     use windows_sys::Win32::System::SystemInformation::GetTickCount64;
@@ -106,7 +107,7 @@ pub fn get_listening_ports() -> usize {
 }
 
 pub fn get_connected_lan_devices() -> usize {
-    let output = match Command::new("arp").arg("-a").output() {
+    let output = match Command::new("arp").arg("-a").creation_flags(CREATE_NO_WINDOW).output() {
         Ok(out) => out,
         Err(_) => return 0,
     };
@@ -272,6 +273,7 @@ pub fn get_os_name() -> String {
         .arg("-NoProfile")
         .arg("-Command")
         .arg("(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').ProductName")
+        .creation_flags(CREATE_NO_WINDOW)
         .output();
 
     if cmd_result.is_err() {
@@ -294,6 +296,7 @@ pub fn get_os_version() -> String {
         .arg("-NoProfile")
         .arg("-Command")
         .arg("(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion').DisplayVersion")
+        .creation_flags(CREATE_NO_WINDOW)
         .output();
 
     if cmd_result.is_err() {
@@ -316,6 +319,7 @@ pub fn get_connected_peripherals() -> usize {
         .arg("-NoProfile")
         .arg("-Command")
         .arg("(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like 'USB\\*' -and $_.Class -ne 'USB' } | Measure-Object).Count")
+        .creation_flags(CREATE_NO_WINDOW)
         .output();
 
     let output = match cmd_result {
@@ -332,6 +336,7 @@ pub fn get_last_system_update() -> u64 {
         .arg("-NoProfile")
         .arg("-Command")
         .arg("$s = New-Object -ComObject Microsoft.Update.Session; $r = $s.CreateUpdateSearcher(); $h = $r.QueryHistory(0, $r.GetTotalHistoryCount()); $last = $h | Where-Object { $_.ResultCode -eq 2 -and $_.Date } | Sort-Object Date -Descending | Select-Object -First 1; if ($last) { ([DateTimeOffset]$last.Date).ToUnixTimeSeconds() }")
+        .creation_flags(CREATE_NO_WINDOW)
         .output();
 
     let output = match cmd_result {
