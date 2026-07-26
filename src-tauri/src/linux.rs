@@ -429,10 +429,13 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
         };
 
         if write_bytes > previous_value {
+            
             let delta = write_bytes - previous_value;
+           
             if delta > busiest_delta {
                 busiest_delta = delta;
                 busiest_pid = pid;
+
             }
         }
     }
@@ -440,7 +443,7 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
     *previous_totals = new_totals;
 
     if busiest_pid == 0 {
-        return String::from("no disk writes since last check");
+        return String::from("No currently writing process");
     }
 
     let comm_path = format!("/proc/{}/comm", busiest_pid);

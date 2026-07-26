@@ -305,6 +305,26 @@ fn get_last_disk_writer(state: tauri::State<AppState>) -> String {
     }
 }
 
+//last launched app that's STILL running 
+#[tauri::command]
+fn get_last_launched_app(state: tauri::State<AppState>) -> String {
+    let mut system = state.system.lock().unwrap();
+
+    let specifics = sysinfo::ProcessRefreshKind::nothing().with_exe(sysinfo::UpdateKind::OnlyIfNotSet);
+    system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, specifics);
+
+    let newest = system.processes().values().max_by_key(|p| p.start_time());
+
+    match newest {
+        Some(process) => process
+            .exe()
+            .and_then(|path| path.file_name())
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| process.name().to_string_lossy().into_owned()),
+        None => String::from("Unknown"),
+    }
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -340,6 +360,7 @@ pub fn run() {
             get_os_version,
             get_last_system_update,
             get_monitors,get_last_disk_writer,
+            get_last_launched_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
