@@ -47,16 +47,11 @@
 </div>
 
 <div class="row">
-  <div class="card">
+  <div class="card diskCard">
     <div class="value" id="diskIoDisplay">-- R / -- W MB/s</div>
-    <div class="label">Disk Usage (Read/Write)</div>
+    <div class="label" id="diskUsageLabel">Disk Usage (Read/Write)</div>
     
-    <div class="tooltip-container">
-      <button id="diskWriterBtn" class="dropdown-button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-      <div id="diskWriterTooltip" class="tooltip-text">Loading...</div>
-    </div>
+    <div id="diskWriterTooltip" class="static-process-box">Loading...</div>
   </div>
 </div>
 
@@ -124,8 +119,6 @@
 
 </div>
 
-</div>
-
 <div class="peek-zone">
   <button class="side-tab" aria-label="Show more stats">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -136,22 +129,13 @@
   <section class="page-secondary">
     <div class="section-header">Lasts</div>
     
-      
       <div class="row">
       <div class="card">
-        <div class="value hiddenSectionValue" id="lastProcessStillRunning">__</div>
+        <div class="value hiddenSectionValue" id="lastProcessStarted">__</div>
         <div class="label">Last started process still running</div>
       </div>
       </div>
         
-      <div class="row">
-      <div class="card">
-        <div class="value hiddenSectionValue" id="lastProcess">__</div>
-        <div class="label">Last started process </div>
-      </div>
-      </div>
-
-    
   </section>
 </div>
 

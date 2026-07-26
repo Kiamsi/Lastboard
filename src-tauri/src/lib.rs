@@ -334,40 +334,8 @@ fn get_last_started_process(state: tauri::State<AppState>) -> String {
         return String::from("no processes found");
     }
 
-    format!("{} (pid {})", newest_name, newest_pid)
+    format!("{}", newest_name,)
 }
-
-#[tauri::command]
-fn get_last_started_process_running(state: tauri::State<AppState>) -> String {
-    let mut system = state.system.lock().unwrap();
-
-    let specifics = sysinfo::ProcessRefreshKind::nothing().with_exe(sysinfo::UpdateKind::OnlyIfNotSet);
-    system.refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, true, specifics);
-
-    let mut newest: Option<&sysinfo::Process> = None;
-    for process in system.processes().values() {
-        let is_newer = match newest {
-            None => true,
-            Some(current) => process.start_time() >= current.start_time(),
-        };
-        if is_newer {
-            newest = Some(process);
-        }
-    }
-
-    let process = match newest {
-        Some(p) => p, None => return String::from("Unknown"),
-    };
-
-    if let Some(exe_path) = process.exe() {
-        if let Some(file_name) = exe_path.file_name() {
-            return file_name.to_string_lossy().into_owned();
-        }
-    }
-
-    process.name().to_string_lossy().into_owned()
-}
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -404,7 +372,6 @@ pub fn run() {
             get_last_system_update,
             get_monitors,get_last_disk_writer,
             get_last_started_process,
-            get_last_started_process_running,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

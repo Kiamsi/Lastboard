@@ -17,9 +17,8 @@ const peripheralsDisplay = document.getElementById("peripheralsDisplay");
 const osVersionDisplay = document.getElementById("osVersionDisplay");
 const lastUpdateDisplay = document.getElementById("lastUpdateDisplay");
 const monitorsDisplay = document.getElementById("monitorsDisplay");
-const lastProcessRunning = document.getElementById("lastProcessStillRunning");
-const diskWriterBtn = document.getElementById("diskWriterBtn");
 const diskWriterTooltip = document.getElementById("diskWriterTooltip");
+const lastProcessStarted = document.getElementById("lastProcessStarted");
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -136,17 +135,29 @@ async function refreshRamUsage() {
 
 async function refreshDiskIo() {
   try {
-    
     const [readBytes, writeBytes] = await invoke('get_disk_io');
     
     //bytes to megabytes
     const readMb = (readBytes / 1048576).toFixed(2);
     const writeMb = (writeBytes / 1048576).toFixed(2);
     
-    diskIoDisplay.textContent = `${readMb} R / ${writeMb} W MB/s`;
+    if (diskIoDisplay) {
+        diskIoDisplay.textContent = `${readMb} R / ${writeMb} W MB/s`;
+    }
   } catch (error) {
     console.error("Error fetching Disk IO:", error);
   }
+}
+
+async function refreshDiskWriter() {
+    if (!diskWriterTooltip) return;
+    try {
+        const processInfo = await invoke('get_last_disk_writer');
+        diskWriterTooltip.textContent = processInfo;
+    } catch (error) {
+        console.error("Error fetching last disk writer:", error);
+        diskWriterTooltip.textContent = 'Error';
+    }
 }
 
 async function refreshPeripherals() {
@@ -167,15 +178,18 @@ async function refreshMonitors() {
     }
 }
 
-async function refreshLastStartedProcessRunning() {
+async function refreshLastProcessStarted() {
     try {
-        const appName = await invoke('get_last_started_process_running');
-        if (lastProcessRunning) {
-            lastProcessRunning.textContent = appName;
+        const process = await invoke("get_last_started_process");
+        if (lastProcessStarted) {
+            lastProcessStarted.textContent = process;
         }
+
     } catch (error) {
-        console.error("Couldn't get last launched app", error);
-        if (lastProcessRunning) lastProcessRunning.textContent = 'Error';
+        console.error("Couldn't get last process", error);
+        
+        if (lastProcessStarted) 
+            lastProcessStarted.textContent = "Error";
     }
 }
 
@@ -226,30 +240,6 @@ async function initializeApp() {
     } catch (error) {
         console.error('Failed to fetch last update:', error);
     }
-  
-    if (diskWriterBtn && diskWriterTooltip) {
-        let diskWriterInterval;
-
-        async function updateDiskWriterTooltip() {
-            try {
-                const processInfo = await invoke('get_last_disk_writer');
-                diskWriterTooltip.textContent = processInfo;
-            } catch (error) {
-                console.error("Error fetching last disk writer:", error);
-                diskWriterTooltip.textContent = 'Error fetching data';
-            }
-        }
-
-        diskWriterBtn.addEventListener('mouseenter', () => {
-            diskWriterTooltip.textContent = 'Loading...';
-            updateDiskWriterTooltip(); 
-            diskWriterInterval = setInterval(updateDiskWriterTooltip, 1000);
-        });
-
-        diskWriterBtn.addEventListener('mouseleave', () => {
-            clearInterval(diskWriterInterval);
-        });
-    }
 
     refreshUptime();
     refreshProcessCount();
@@ -262,9 +252,10 @@ async function initializeApp() {
     refreshCpuSpeed();
     refreshRamUsage();
     refreshDiskIo();
+    refreshDiskWriter();
     refreshPeripherals();
     refreshMonitors();
-    refreshLastStartedProcessRunning();
+    refreshLastProcessStarted();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -277,9 +268,10 @@ async function initializeApp() {
     setInterval(refreshCpuSpeed, 1000);
     setInterval(refreshRamUsage, 4000);
     setInterval(refreshDiskIo, 1000);
+    setInterval(refreshDiskWriter, 1000);
     setInterval(refreshPeripherals, 60000);
     setInterval(refreshMonitors, 180000);
-    setInterval(refreshLastStartedProcessRunning, 5000);
+    setInterval(refreshLastProcessStarted, 1000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

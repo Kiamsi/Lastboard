@@ -29,7 +29,7 @@ body {
 .value {
   font-size: 42px;
   font-weight: 300;
-  margin-bottom: 8px;
+  margin-bottom: 7px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -161,5 +161,13 @@ body {
 }
 
 .hiddenSectionValue{
-  font-size: 2em;
+  font-size: 1.6em;
+}
+
+#diskUsageLabel{
+  margin-bottom: 20px;
+}
+
+.diskCard{
+  padding-bottom: 0px;
 }
