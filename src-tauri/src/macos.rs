@@ -3,6 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::collections::HashMap;
+use std::ffi::c_void;
 
 pub fn get_uptime() -> UptimeInfo {
     let cmd_result = Command::new("sysctl").arg("-n").arg("kern.boottime").output();
@@ -244,7 +246,7 @@ pub fn get_last_sleep_time() -> String {
 
     for line in log_text.lines() {
         if line.contains("Maintenance") {
-            continue; // Power Nap background cycle, not a real user-facing sleep
+            continue; 
         }
 
         let fields: Vec<&str> = line.split_whitespace().collect();
@@ -263,4 +265,129 @@ pub fn get_last_sleep_time() -> String {
     }
 
     format!("{} {}", last_sleep_date, last_sleep_time)
+}
+
+const PROC_ALL_PIDS: u32 = 1;
+const RUSAGE_INFO_V2: i32 = 2;
+
+extern "C" {
+    fn proc_listpids(proc_type: u32, typeinfo: u32, buffer: *mut c_void, buffersize: i32) -> i32;
+    fn proc_name(pid: i32, buffer: *mut c_void, buffersize: u32) -> i32;
+    fn proc_pid_rusage(pid: i32, flavor: i32, buffer: *mut c_void) -> i32;
+}
+
+//this is dumb but it has to be
+#[repr(C)]
+#[derive(Default)]
+struct RUsageInfoV2 {
+    ri_uuid: [u8; 16],
+    ri_user_time: u64,
+    ri_system_time: u64,
+    ri_pkg_idle_wkups: u64,
+    ri_interrupt_wkups: u64,
+    ri_pageins: u64,
+    ri_wired_size: u64,
+    ri_resident_size: u64,
+    ri_phys_footprint: u64,
+    ri_proc_start_abstime: u64,
+    ri_proc_exit_abstime: u64,
+    ri_child_user_time: u64,
+    ri_child_system_time: u64,
+    ri_child_pkg_idle_wkups: u64,
+    ri_child_interrupt_wkups: u64,
+    ri_child_pageins: u64,
+    ri_child_elapsed_abstime: u64,
+    ri_diskio_bytesread: u64,
+    ri_diskio_byteswritten: u64,
+}
+
+fn list_all_pids() -> Vec<i32> {
+    unsafe {
+        // First call with a null buffer just asks for the required size, in bytes.
+        let size = proc_listpids(PROC_ALL_PIDS, 0, std::ptr::null_mut(), 0);
+        if size <= 0 {
+            return Vec::new();
+        }
+
+        let capacity = size as usize / std::mem::size_of::<i32>();
+        let mut pids = vec![0i32; capacity];
+
+        let ret = proc_listpids(PROC_ALL_PIDS, 0, pids.as_mut_ptr() as *mut c_void, size);
+        if ret <= 0 {
+            return Vec::new();
+        }
+
+        let actual_count = (ret as usize / std::mem::size_of::<i32>()).min(pids.len());
+        pids.truncate(actual_count);
+        pids.retain(|&pid| pid != 0);
+        pids
+    }
+}
+
+fn process_name(pid: i32) -> String {
+    
+    let mut buf = vec![0u8; 256];
+    
+    let ret = unsafe { proc_name(pid, buf.as_mut_ptr() as *mut c_void, buf.len() as u32) };
+
+    if ret <= 0 {
+        return String::from("unknown");
+    }
+
+   
+    buf.truncate(ret as usize);
+    String::from_utf8_lossy(&buf).to_string()
+}
+
+fn disk_write_bytes(pid: i32) -> Option<u64> {
+    
+    let mut usage = RUsageInfoV2::default();
+    
+    let ptr = &mut usage as *mut RUsageInfoV2 as *mut c_void;
+    
+    let ret = unsafe { proc_pid_rusage(pid, RUSAGE_INFO_V2, ptr) };
+
+    if ret < 0 {
+        None
+    } else {
+        Some(usage.ri_diskio_byteswritten)
+    }
+}
+
+pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
+    
+    let mut busiest_pid: i32 = 0;
+   
+    let mut busiest_delta: u64 = 0;
+    
+    let mut new_totals: HashMap<i32, u64> = HashMap::new();
+
+    for pid in list_all_pids() {
+        
+        let Some(write_bytes) = disk_write_bytes(pid) else {
+            continue;
+        };
+
+        new_totals.insert(pid, write_bytes);
+
+        let previous_value = previous_totals.get(&pid).copied().unwrap_or(write_bytes);
+
+        if write_bytes > previous_value {
+            
+            let delta = write_bytes - previous_value;
+            
+            if delta > busiest_delta {
+                busiest_delta = delta;
+                busiest_pid = pid;
+            }
+        }
+    }
+
+    *previous_totals = new_totals;
+
+    if busiest_pid == 0 {
+        return String::from("No currently writing process");
+    }
+
+    format!("{} (pid {})", process_name(busiest_pid), busiest_pid)
 }

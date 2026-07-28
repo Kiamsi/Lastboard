@@ -10,6 +10,15 @@ use windows_sys::Win32::System::Performance::{
     PDH_CSTATUS_VALID_DATA, PDH_FMT_COUNTERVALUE, PDH_FMT_LARGE, PDH_HCOUNTER, PDH_HQUERY,
 };
 use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
+use std::collections::HashMap;
+use windows::Win32::Foundation::CloseHandle;
+use windows::Win32::System::Diagnostics::ToolHelp::{
+    CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+    TH32CS_SNAPPROCESS,
+};
+use windows::Win32::System::Threading::{
+    GetProcessIoCounters, OpenProcess, IO_COUNTERS, PROCESS_QUERY_LIMITED_INFORMATION,
+};
 
 pub fn get_uptime() -> UptimeInfo {
     use windows_sys::Win32::System::SystemInformation::GetTickCount64;
@@ -360,4 +369,76 @@ pub fn get_monitors() -> usize {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     stdout.trim().parse::<usize>().unwrap_or(0)
+}
+
+pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
+    let snapshot = match unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) } {
+        Ok(handle) => handle,
+        Err(_) => return String::from("can't snapshot processes"),
+    };
+
+    let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
+    entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+
+    let mut busiest_pid: i32 = 0;
+    let mut busiest_delta: u64 = 0;
+    let mut busiest_name = String::new();
+    let mut new_totals: HashMap<i32, u64> = HashMap::new();
+
+    let mut has_entry = unsafe { Process32FirstW(snapshot, &mut entry) }.is_ok();
+
+    while has_entry {
+        let pid = entry.th32ProcessID as i32;
+
+        let handle_result =
+            unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, entry.th32ProcessID) };
+
+        if let Ok(handle) = handle_result {
+            let mut io_counters: IO_COUNTERS = unsafe { std::mem::zeroed() };
+            let got_counters = unsafe { GetProcessIoCounters(handle, &mut io_counters) }.is_ok();
+            unsafe {
+                let _ = CloseHandle(handle);
+            }
+
+            if got_counters {
+                let write_bytes = io_counters.WriteTransferCount;
+                new_totals.insert(pid, write_bytes);
+
+                let previous_value = match previous_totals.get(&pid) {
+                    Some(value) => *value,
+                    None => write_bytes,
+                };
+
+                if write_bytes > previous_value {
+                    let delta = write_bytes - previous_value;
+                    if delta > busiest_delta {
+                        busiest_delta = delta;
+                        busiest_pid = pid;
+
+                        let mut name_len = entry.szExeFile.len();
+                        for i in 0..entry.szExeFile.len() {
+                            if entry.szExeFile[i] == 0 {
+                                name_len = i;
+                                break;
+                            }
+                        }
+                        busiest_name = String::from_utf16_lossy(&entry.szExeFile[..name_len]);
+                    }
+                }
+            }
+        }
+
+        has_entry = unsafe { Process32NextW(snapshot, &mut entry) }.is_ok();
+    }
+
+    unsafe {
+        let _ = CloseHandle(snapshot);
+    }
+    *previous_totals = new_totals;
+
+    if busiest_pid == 0 {
+        return String::from("No currently writing process");
+    }
+
+    format!("{} (pid {})", busiest_name, busiest_pid)
 }

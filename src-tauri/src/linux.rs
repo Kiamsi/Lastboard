@@ -373,9 +373,8 @@ use std::collections::HashMap;
 
 pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
    
-    let proc_dir = match std::fs::read_dir("/proc") {
-        Ok(dir) => dir,
-        Err(_) => return String::from("can't read /proc"),
+    let proc_directory = match std::fs::read_dir("/proc") {
+        Ok(directory) => directory, Err(_) => return String::from("can't read /proc"),
     };
 
     let mut busiest_pid: i32 = 0;
@@ -384,7 +383,7 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
     
     let mut new_totals: HashMap<i32, u64> = HashMap::new();
 
-    for entry in proc_dir {
+    for entry in proc_directory {
         
         let entry = match entry {
             Ok(e) => e, Err(_) => continue,

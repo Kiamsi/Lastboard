@@ -15,18 +15,23 @@ pub struct UptimeInfo {
 }
 
 pub struct AppState {
+    
     pub system: Mutex<System>,
+    
     pub networks: Mutex<Networks>,
+    
     #[cfg(target_os = "windows")]
     pub disk_io: Mutex<crate::windows::DiskIoQuery>,
+   
     #[cfg(not(target_os = "windows"))]
     pub last_disk_io: Mutex<Option<(u64, u64)>>,
-    #[cfg(target_os = "linux")]
     pub disk_writer_history: Mutex<std::collections::HashMap<i32, u64>>,
+    
 }
 
 #[tauri::command]
 fn get_uptime() -> UptimeInfo {
+    
     #[cfg(target_os = "windows")]
     {
         windows::get_uptime()
@@ -129,6 +134,7 @@ fn get_cpu_usage(state: tauri::State<AppState>) -> f32 {
 
 #[tauri::command]
 fn get_cpu_speed(state: tauri::State<AppState>) -> u64 {
+    
     let mut system = state.system.lock().unwrap();
     system.refresh_cpu_frequency();
 
@@ -168,6 +174,7 @@ fn get_disk_io(state: tauri::State<AppState>) -> (u64, u64) {
         };
 
         let mut last = state.last_disk_io.lock().unwrap();
+       
         let delta = match *last {
             Some((prev_read, prev_written)) => (
                 current_read.saturating_sub(prev_read),
@@ -292,16 +299,22 @@ fn get_monitors() -> usize {
 
 #[tauri::command]
 fn get_last_disk_writer(state: tauri::State<AppState>) -> String {
-    
     #[cfg(target_os = "linux")]
     {
         let mut history = state.disk_writer_history.lock().unwrap();
         linux::get_last_disk_writer(&mut history)
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
     {
-        String::from("not implemented yet")
+        let mut history = state.disk_writer_history.lock().unwrap();
+        windows::get_last_disk_writer(&mut history)
+    }
+
+    #[cfg(target_os = "macos")]{
+        
+        let mut history = state.disk_writer_history.lock().unwrap();
+        macos::get_last_disk_writer(&mut history)
     }
 }
 
@@ -321,7 +334,9 @@ fn get_last_started_process(state: tauri::State<AppState>) -> String {
     let mut found_any = false;
 
     for (pid, process) in system.processes() {
+       
         let start_time = process.start_time();
+       
         if !found_any || start_time > newest_start_time {
             newest_start_time = start_time;
             newest_name = process.name().to_string_lossy().to_string();
