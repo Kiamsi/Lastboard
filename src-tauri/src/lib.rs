@@ -371,6 +371,15 @@ fn get_last_sleep_time() -> String {
     }
 }
 
+#[tauri::command]
+fn get_last_downloaded_file() -> String {
+    let downloads_dir = match dirs::download_dir() {
+        Some(path) => path,
+        None => return String::from("Unknown"),
+    };
+    newest_file_in(&downloads_dir)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     
@@ -407,7 +416,70 @@ pub fn run() {
             get_monitors,get_last_disk_writer,
             get_last_started_process,
             get_last_sleep_time,
+            get_last_downloaded_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn is_likely_incomplete_download(file_name: &str) -> bool {
+    file_name.starts_with('.')
+        || file_name.ends_with(".crdownload") // Chrome, mid-download
+        || file_name.ends_with(".part")       // Firefox, mid-download
+        || file_name.ends_with(".download")   // Safari, mid-download
+}
+
+fn newest_file_in(dir: &std::path::Path) -> String {
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(_) => return String::from("Unknown"),
+    };
+
+    let mut newest_name: Option<String> = None;
+    let mut newest_time: Option<std::time::SystemTime> = None;
+
+    for entry in entries {
+        let entry = match entry {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        let is_file = match entry.file_type() {
+            Ok(file_type) => file_type.is_file(),
+            Err(_) => false,
+        };
+        if !is_file {
+            continue;
+        }
+
+        let file_name = entry.file_name().to_string_lossy().into_owned();
+        if is_likely_incomplete_download(&file_name) {
+            continue;
+        }
+
+        let metadata = match entry.metadata() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+
+        let modified = match metadata.modified() {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+
+        let is_newer = match newest_time {
+            None => true,
+            Some(current) => modified >= current,
+        };
+
+        if is_newer {
+            newest_time = Some(modified);
+            newest_name = Some(file_name);
+        }
+    }
+
+    match newest_name {
+        Some(name) => name,
+        None => String::from("No files in Downloads"),
+    }
 }
