@@ -246,7 +246,7 @@ pub fn get_last_sleep_time() -> String {
 
     for line in log_text.lines() {
         if line.contains("Maintenance") {
-            continue; 
+            continue;
         }
 
         let fields: Vec<&str> = line.split_whitespace().collect();

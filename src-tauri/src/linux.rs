@@ -2,6 +2,7 @@ use crate::UptimeInfo;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::process::Command;
 
 pub fn get_uptime() -> UptimeInfo {
     
@@ -442,7 +443,7 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
     *previous_totals = new_totals;
 
     if busiest_pid == 0 {
-        return String::from("No currently writing process");
+        return String::from("(Writing processes)");
     }
 
     let comm_path = format!("/proc/{}/comm", busiest_pid);
@@ -452,4 +453,62 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
     };
 
     format!("{} (pid {})", process_name, busiest_pid)
+}
+
+pub fn get_last_sleep_time() -> String {
+    let output = match Command::new("journalctl")
+        .args(["-u", "systemd-suspend.service", "-o", "json", "-n", "1", "--no-pager"])
+        .output()
+    {
+        Ok(result) => result,
+        Err(_) => return String::from("could not run journalctl"),
+    };
+
+    let log_text = String::from_utf8_lossy(&output.stdout);
+    let search_key = "\"__REALTIME_TIMESTAMP\"";
+    let mut timestamp_seconds: u64 = 0;
+
+    for line in log_text.lines() {
+        let Some(key_pos) = line.find(search_key) else {
+            continue;
+        };
+        let after_key = &line[key_pos + search_key.len()..];
+
+        let Some(colon_pos) = after_key.find(':') else {
+            continue;
+        };
+        let after_colon = &after_key[colon_pos + 1..];
+
+        let Some(quote_start) = after_colon.find('"') else {
+            continue;
+        };
+        let value_slice = &after_colon[quote_start + 1..];
+
+        let Some(quote_end) = value_slice.find('"') else {
+            continue;
+        };
+        let timestamp_text = &value_slice[..quote_end];
+
+        let Ok(timestamp_micros) = timestamp_text.parse::<u64>() else {
+            continue;
+        };
+
+        timestamp_seconds = timestamp_micros / 1_000_000;
+    }
+
+    if timestamp_seconds == 0 {
+        return String::from("no sleep event found in the log");
+    }
+
+    let formatted = match Command::new("date")
+        .arg("-d")
+        .arg(format!("@{timestamp_seconds}"))
+        .arg("+%Y-%m-%d %H:%M:%S")
+        .output()
+    {
+        Ok(result) => result,
+        Err(_) => return String::from("could not format sleep time"),
+    };
+
+    String::from_utf8_lossy(&formatted.stdout).trim().to_string()
 }

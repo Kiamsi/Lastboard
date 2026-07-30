@@ -437,8 +437,41 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
     *previous_totals = new_totals;
 
     if busiest_pid == 0 {
-        return String::from("No currently writing process");
+        return String::from("(Writing processes)");
     }
 
     format!("{} (pid {})", busiest_name, busiest_pid)
+}
+
+fn extract_realtime_timestamp(json_line: &str) -> Option<u64> {
+    let key_pos = json_line.find("\"__REALTIME_TIMESTAMP\"")?;
+    let after_key = &json_line[key_pos + "\"__REALTIME_TIMESTAMP\"".len()..];
+    let colon_pos = after_key.find(':')?;
+    let after_colon = &after_key[colon_pos + 1..];
+    let value_start = after_colon.find('"')? + 1;
+    let value_slice = &after_colon[value_start..];
+    let value_end = value_slice.find('"')?;
+    value_slice[..value_end].parse::<u64>().ok()
+}
+
+#[tauri::command]
+pub fn get_last_sleep_time() -> String {
+    let execute = || -> Option<u64> {
+        let output = Command::new("journalctl")
+            .args(["-u", "systemd-suspend.service", "-o", "json", "-n", "1", "--no-pager"])
+            .output()
+            .creation_flags(CREATE_NO_WINDOW)
+            .ok()?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let last_line = stdout.lines().next()?;
+
+        let timestamp_micros = extract_realtime_timestamp(last_line)?;
+        Some(timestamp_micros / 1_000_000)
+    };
+
+    match execute() {
+        Some(time) => time.to_string(),
+        None => String::new(), 
+    }
 }

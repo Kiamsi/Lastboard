@@ -362,12 +362,12 @@ fn get_last_sleep_time() -> String {
 
     #[cfg(target_os = "linux")]
     {
-        String::from("not implemented yet")
+        linux::get_last_sleep_time()
     }
 
     #[cfg(target_os = "windows")]
     {
-        String::from("not implemented yet")
+        windows::get_last_sleep_time()
     }
 }
 

@@ -19,6 +19,7 @@ const lastUpdateDisplay = document.getElementById("lastUpdateDisplay");
 const monitorsDisplay = document.getElementById("monitorsDisplay");
 const diskWriterTooltip = document.getElementById("diskWriterTooltip");
 const lastProcessStarted = document.getElementById("lastProcessStarted");
+const lastSystemSleepDisplay = document.getElementById("lastSystemSleep");
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -193,6 +194,27 @@ async function refreshLastProcessStarted() {
     }
 }
 
+async function refreshLastSleepTime() {
+    
+    try {
+        
+        const sleepTime = await invoke('get_last_sleep_time');
+        
+        if (lastSystemSleepDisplay) {
+            
+            lastSystemSleepDisplay.textContent = sleepTime;
+        }
+    } catch (error) {
+        
+        console.error("Didn't get last sleep time", error);
+        
+        if (lastSystemSleepDisplay) {
+            
+            lastSystemSleepDisplay.textContent = 'Error';
+        }
+    }
+}
+
 async function initializeApp() {
     
     try {
@@ -256,22 +278,24 @@ async function initializeApp() {
     refreshPeripherals();
     refreshMonitors();
     refreshLastProcessStarted();
+    refreshLastSleepTime();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
     setInterval(refreshNetworkSpeed, 1000); 
     setInterval(refreshOpenConnections, 2500);
-    setInterval(refreshAppCount, 300000); 
-    setInterval(refreshLanDevices, 60000);
+    setInterval(refreshAppCount, 300_000); 
+    setInterval(refreshLanDevices, 60_000);
     setInterval(refreshListeningPorts, 5000);
     setInterval(refreshCpuUsage, 1000);
     setInterval(refreshCpuSpeed, 1000);
     setInterval(refreshRamUsage, 4000);
     setInterval(refreshDiskIo, 1000);
     setInterval(refreshDiskWriter, 1000);
-    setInterval(refreshPeripherals, 60000);
-    setInterval(refreshMonitors, 180000);
+    setInterval(refreshPeripherals, 60_000);
+    setInterval(refreshMonitors, 180_000);
     setInterval(refreshLastProcessStarted, 1000);
+    setInterval(refreshLastSleepTime, 600_000)
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);
