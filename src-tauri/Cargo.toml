@@ -1,12 +1,12 @@
 [package]
-name = "dash"
-version = "0.1.0"
-description = "Dashboard"
+name = "lastboard"
+version = "0.6.0"
+description = "dashboard for last done stuff"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "dash_lib"
+name = "lastboard_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

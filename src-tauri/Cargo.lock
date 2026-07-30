@@ -651,21 +651,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dash"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "windows 0.62.2",
- "windows-sys 0.61.2",
- "winreg 0.52.0",
-]
-
-[[package]]
 name = "dbus"
 version = "0.9.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1874,6 +1859,21 @@ dependencies = [
  "bitflags 2.13.0",
  "serde",
  "unicode-segmentation",
+]
+
+[[package]]
+name = "lastboard"
+version = "0.6.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "windows 0.62.2",
+ "windows-sys 0.61.2",
+ "winreg 0.52.0",
 ]
 
 [[package]]
