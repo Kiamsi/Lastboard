@@ -168,7 +168,7 @@ pub fn installed_apps() -> Vec<String> {
 }
 
 pub fn get_recent_file_linux() -> String {
-    "might implement later".to_string()
+    "might make later".to_string()
 }
 
 pub fn get_os_name() -> String {
