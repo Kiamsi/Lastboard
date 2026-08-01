@@ -1,4 +1,4 @@
-use crate::UptimeInfo;
+use crate::{UptimeInfo, ConnectionInfo};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -391,3 +391,60 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
 
     format!("{} (pid {})", process_name(busiest_pid), busiest_pid)
 }
+
+fn split_host_port(addr: &str) -> (String, u16) {
+    match addr.rfind('.') {
+        Some(pos) => {
+            let host = &addr[..pos];
+            let port = addr[pos + 1..].parse::<u16>().unwrap_or(0);
+            (host.to_string(), port)
+        }
+        None => (addr.to_string(), 0),
+    }
+}
+
+pub fn get_connections() -> Vec<ConnectionInfo> {
+    let cmd_result = Command::new("netstat").arg("-an").output();
+
+    let output = match cmd_result {
+        Ok(out) => out,
+        Err(_) => return Vec::new(),
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut connections = Vec::new();
+
+    for line in stdout.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+
+        let protocol = match fields.first().copied() {
+            Some(p) if p.starts_with("tcp") => "TCP",
+            Some(p) if p.starts_with("udp") => "UDP",
+            _ => continue,
+        };
+
+        if fields.len() < 5 {
+            continue;
+        }
+
+        let (local_address, local_port) = split_host_port(fields[3]);
+        let (remote_address, remote_port) = split_host_port(fields[4]);
+        let state = if protocol == "TCP" {
+            fields.get(5).unwrap_or(&"").to_string()
+        } else {
+            String::new()
+        };
+
+        connections.push(ConnectionInfo {
+            protocol: protocol.to_string(),
+            local_address,
+            local_port,
+            remote_address,
+            remote_port,
+            state,
+        });
+    }
+
+    connections
+}
+

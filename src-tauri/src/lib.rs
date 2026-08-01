@@ -15,18 +15,23 @@ pub struct UptimeInfo {
 }
 
 pub struct AppState {
-    
     pub system: Mutex<System>,
-    
     pub networks: Mutex<Networks>,
-    
     #[cfg(target_os = "windows")]
     pub disk_io: Mutex<crate::windows::DiskIoQuery>,
-   
     #[cfg(not(target_os = "windows"))]
     pub last_disk_io: Mutex<Option<(u64, u64)>>,
     pub disk_writer_history: Mutex<std::collections::HashMap<i32, u64>>,
-    
+}
+
+#[derive(serde::Serialize)]
+pub struct ConnectionInfo {
+    pub protocol: String,      
+    pub local_address: String,
+    pub local_port: u16,
+    pub remote_address: String,
+    pub remote_port: u16,
+    pub state: String,
 }
 
 #[tauri::command]
@@ -372,6 +377,22 @@ fn get_last_sleep_time() -> String {
 }
 
 #[tauri::command]
+fn get_connections() -> Vec<ConnectionInfo> {
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_connections()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_connections()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_connections()
+    }
+}
+
+#[tauri::command]
 fn get_last_downloaded_file() -> String {
     let downloads_dir = match dirs::download_dir() {
         Some(path) => path,
@@ -386,12 +407,12 @@ pub fn run() {
     let app_state = AppState {
         system: Mutex::new(System::new_all()),
         networks: Mutex::new(Networks::new_with_refreshed_list()),
+        disk_writer_history: Mutex::new(std::collections::HashMap::new()),
         #[cfg(not(target_os = "windows"))]
         last_disk_io: Mutex::new(None),
         #[cfg(target_os = "windows")]
         disk_io: Mutex::new(windows::init_disk_io_query()),
-        #[cfg(target_os = "linux")]
-        disk_writer_history: Mutex::new(std::collections::HashMap::new()),
+
     };
 
     tauri::Builder::default()
@@ -417,6 +438,7 @@ pub fn run() {
             get_last_started_process,
             get_last_sleep_time,
             get_last_downloaded_file,
+            get_connections,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

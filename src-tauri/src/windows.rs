@@ -1,4 +1,5 @@
 use crate::UptimeInfo;
+use crate::ConnectionInfo;
 use winreg::enums::*;
 use winreg::RegKey;
 use windows_sys::Win32::NetworkManagement::IpHelper::{
@@ -438,5 +439,72 @@ pub fn get_last_sleep_time() -> String {
     match execute() {
         Some(time) => time.to_string(),
         None => String::new(), 
+    }
+}
+
+pub fn get_connections() -> Vec<ConnectionInfo> {
+    let cmd_result = Command::new("netstat").arg("-ano").output();
+
+    let output = match cmd_result {
+        Ok(out) => out,
+        Err(_) => return Vec::new(),
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut connections = Vec::new();
+
+    for line in stdout.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+
+        let protocol = match fields.first().copied() {
+            Some("TCP") => "TCP",
+            Some("UDP") => "UDP",
+            _ => continue,
+        };
+
+        let min_fields = if protocol == "TCP" { 5 } else { 4 };
+        if fields.len() < min_fields {
+            continue;
+        }
+
+        let (local_address, local_port) = split_host_port(fields[1]);
+        let (remote_address, remote_port) = split_host_port(fields[2]);
+        let state = if protocol == "TCP" {
+            fields.get(3).unwrap_or(&"").to_string()
+        } else {
+            String::new()
+        };
+
+        connections.push(ConnectionInfo {
+            protocol: protocol.to_string(),
+            local_address,
+            local_port,
+            remote_address,
+            remote_port,
+            state,
+        });
+    }
+
+    connections
+}
+
+fn split_host_port(addr: &str) -> (String, u16) {
+    if let Some(rest) = addr.strip_prefix('[') {
+        if let Some(close) = rest.find(']') {
+            let host = &rest[..close];
+            let port = rest[close + 1..]
+                .strip_prefix(':')
+                .and_then(|p| p.parse::<u16>().ok())
+                .unwrap_or(0);
+            return (host.to_string(), port);
+        }
+    }
+    match addr.rfind(':') {
+        Some(pos) => {
+            let host = &addr[..pos];
+            let port = addr[pos + 1..].parse::<u16>().unwrap_or(0);
+            (host.to_string(), port)
+        }
+        None => (addr.to_string(), 0),
     }
 }

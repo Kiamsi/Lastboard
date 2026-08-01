@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard</title>
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -26,7 +26,6 @@
 <div class="label">Processes running</div>
 </div>
 </div>
-
 
 <div class="section-header">Hardware</div>
 <div class="row">
@@ -50,7 +49,6 @@
   <div class="card diskCard">
     <div class="value" id="diskIoDisplay">-- R / -- W MB/s</div>
     <div class="label" id="diskUsageLabel">Disk Usage (Read/Write)</div>
-    
     <div id="diskWriterTooltip" class="static-process-box">Loading...</div>
   </div>
 </div>
@@ -60,6 +58,14 @@
 <div class="card">
 <div class="value" id="connectionsDisplay">--</div>
 <div class="label">Active Connections</div>
+  <div class="tooltip-container">
+    <button class="dropdown-button" aria-label="Show connections details">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 12c2-2 4-2 6 0s4 2 6 0 4-2 6 0"></path>
+      </svg>
+    </button>
+    <div class="tooltip-text" id="connectionsTooltip">Loading connections...</div>
+  </div>
 </div>
 
 <div class="card">
@@ -71,7 +77,6 @@
 <div class="value" id="lanDevicesDisplay">--</div>
 <div class="label">Connected LAN Devices</div>
 </div>
-
 
 </div>
 
@@ -140,6 +145,13 @@
       <div class="card">
         <div class="value hiddenSectionValue" id="lastSystemSleep">__</div>
         <div class="label">Last time system went to sleep</div>
+      </div>
+      </div>
+
+      <div class="row">
+      <div class="card">
+        <div class="value hiddenSectionValue" id="lastFileDownloaded">__</div>
+        <div class="label">Last file downloaded (in Downloads)</div>
       </div>
       </div>
         

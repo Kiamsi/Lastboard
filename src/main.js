@@ -20,6 +20,8 @@ const monitorsDisplay = document.getElementById("monitorsDisplay");
 const diskWriterTooltip = document.getElementById("diskWriterTooltip");
 const lastProcessStarted = document.getElementById("lastProcessStarted");
 const lastSystemSleepDisplay = document.getElementById("lastSystemSleep");
+const lastFileDownloaded = document.getElementById("lastFileDownloaded");
+const connectionsTooltip = document.getElementById("connectionsTooltip");
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -33,7 +35,7 @@ async function refreshUptime() {
         const { uptime } = await invoke('get_uptime');
         if (uptimeDisplay) uptimeDisplay.textContent = formatUptime(uptime);
     } catch (error) {
-        console.error('Failed to fetch uptime:', error);
+        console.error(error);
     }
 }
 
@@ -42,7 +44,7 @@ async function refreshProcessCount() {
         const count = await invoke('get_process_count');
         if (processesDisplay) processesDisplay.textContent = count;
     } catch (error) {
-        console.error('Failed to fetch process count:', error);
+        console.error(error);
     }
 }
 
@@ -51,7 +53,6 @@ async function refreshAppCount() {
         const appsList = await invoke('get_installed_apps');
         if (appCountDisplay) appCountDisplay.textContent = appsList.length;
     } catch (error) {
-        console.error('Failed to fetch app count:', error);
         if (appCountDisplay) appCountDisplay.textContent = 'Error';
     }
 }
@@ -65,17 +66,45 @@ async function refreshNetworkSpeed() {
             networkSpeedDisplay.textContent = `${downMbps} ↓ / ${upMbps} ↑ Mbps`;
         }
     } catch (error) {
-        console.error('Failed to fetch network speed:', error);
         if (networkSpeedDisplay) networkSpeedDisplay.textContent = 'Error';
     }
 }
 
-async function refreshOpenConnections() {
+async function refreshConnectionDetails() {
+    if (!connectionsTooltip) return;
     try {
-        const count = await invoke('get_open_connections');
-        if (connectionsDisplay) connectionsDisplay.textContent = count;
+        
+        const allConnections = await invoke('get_connections');
+        const activeConnections = allConnections.filter(c => c.state === 'ESTABLISHED');
+
+        if (connectionsDisplay) {
+            connectionsDisplay.textContent = activeConnections.length;
+        }
+
+        if (activeConnections.length === 0) {
+            connectionsTooltip.innerHTML = 'No active connections found.';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
+        
+        for (let i = 0; i < activeConnections.length; i++) {
+            const c = activeConnections[i];
+            html += `
+                <div>
+                    <strong style="color: #c8ccd5;">${c.protocol}</strong> 
+                    ${c.local_address}:${c.local_port} &rarr; 
+                    ${c.remote_address}:${c.remote_port} 
+                    <span style="color: #939292; font-size: 0.9em;">(${c.state})</span>
+                </div>
+            `;
+        }
+
+        html += '</div>';
+        connectionsTooltip.innerHTML = html;
+
     } catch (error) {
-        console.error('Failed to fetch open connections:', error);
+        connectionsTooltip.innerHTML = 'Error loading connection data.';
     }
 }
 
@@ -84,7 +113,7 @@ async function refreshLanDevices() {
         const count = await invoke('get_connected_lan_devices');
         if (lanDevicesDisplay) lanDevicesDisplay.textContent = count;
     } catch (error) {
-        console.error('Failed to fetch LAN devices count:', error);
+        console.error(error);
     }
 }
 
@@ -93,7 +122,7 @@ async function refreshListeningPorts() {
         const count = await invoke('get_listening_ports');
         if (listeningPortsDisplay) listeningPortsDisplay.textContent = count;
     } catch (error) {
-        console.error('Failed to fetch listening ports:', error);
+        console.error(error);
     }
 }
 
@@ -104,7 +133,7 @@ async function refreshCpuUsage() {
             cpuUsageDisplay.textContent = `${cpu.toFixed(1)}%`;
         }
     } catch (error) {
-        console.error('Failed to fetch CPU usage:', error);
+        console.error(error);
     }
 }
 
@@ -115,14 +144,13 @@ async function refreshCpuSpeed() {
             cpuClockSpeedDisplay.textContent = `${(speed / 1000).toFixed(2)} GHz`;
         }
     } catch (error) {
-        console.error('Failed to fetch CPU speed:', error);
+        console.error(error);
     }
 }
 
 async function refreshRamUsage() {
     try {
         const [usedBytes, totalBytes] = await invoke('get_ram_usage');
-        
         const usedGB = (usedBytes / 1073741824).toFixed(1);
         const totalGB = (totalBytes / 1073741824).toFixed(1);
         
@@ -130,15 +158,13 @@ async function refreshRamUsage() {
             ramUsageDisplay.textContent = `${usedGB} / ${totalGB} GB`;
         }
     } catch (error) {
-        console.error("Couldn't get ram usage ", error);
+        console.error(error);
     }
 }
 
 async function refreshDiskIo() {
   try {
     const [readBytes, writeBytes] = await invoke('get_disk_io');
-    
-    //bytes to megabytes
     const readMb = (readBytes / 1048576).toFixed(2);
     const writeMb = (writeBytes / 1048576).toFixed(2);
     
@@ -146,7 +172,7 @@ async function refreshDiskIo() {
         diskIoDisplay.textContent = `${readMb} R / ${writeMb} W MB/s`;
     }
   } catch (error) {
-    console.error("Error fetching Disk IO:", error);
+    console.error(error);
   }
 }
 
@@ -156,7 +182,6 @@ async function refreshDiskWriter() {
         const processInfo = await invoke('get_last_disk_writer');
         diskWriterTooltip.textContent = processInfo;
     } catch (error) {
-        console.error("Error fetching last disk writer:", error);
         diskWriterTooltip.textContent = 'Error';
     }
 }
@@ -166,7 +191,7 @@ async function refreshPeripherals() {
         const count = await invoke('get_connected_peripherals');
         if (peripheralsDisplay) peripheralsDisplay.textContent = count;
     } catch (error) {
-        console.error('failed to get peripheral devices:', error);
+        console.error(error);
     }
 }
 
@@ -175,7 +200,7 @@ async function refreshMonitors() {
         const count = await invoke('get_monitors');
         if (monitorsDisplay) monitorsDisplay.textContent = count;
     } catch (error) {
-        console.error('Failed to get monitors count:', error);
+        console.error(error);
     }
 }
 
@@ -185,38 +210,39 @@ async function refreshLastProcessStarted() {
         if (lastProcessStarted) {
             lastProcessStarted.textContent = process;
         }
-
     } catch (error) {
-        console.error("Couldn't get last process", error);
-        
         if (lastProcessStarted) 
             lastProcessStarted.textContent = "Error";
     }
 }
 
 async function refreshLastSleepTime() {
-    
     try {
-        
         const sleepTime = await invoke('get_last_sleep_time');
-        
         if (lastSystemSleepDisplay) {
-            
             lastSystemSleepDisplay.textContent = sleepTime;
         }
     } catch (error) {
-        
-        console.error("Didn't get last sleep time", error);
-        
         if (lastSystemSleepDisplay) {
-            
             lastSystemSleepDisplay.textContent = 'Error';
         }
     }
 }
 
+async function refreshLastFileDownloaded() {
+    try {
+        const file = await invoke("get_last_downloaded_file");
+        if (lastFileDownloaded) {
+            lastFileDownloaded.textContent = file;
+        }
+    } catch (error) {
+        if (lastFileDownloaded) {
+            lastFileDownloaded.textContent = "Error";
+        }
+    }
+}
+
 async function initializeApp() {
-    
     try {
         const initialData = await invoke('get_uptime');
         if (bootTimeDisplay) {
@@ -225,7 +251,7 @@ async function initializeApp() {
                 .slice(0, 5);
         }
     } catch (error) {
-        console.error('Failed to fetch boot time:', error);
+        console.error(error);
     }
 
     try {
@@ -234,7 +260,7 @@ async function initializeApp() {
             osNameDisplay.textContent = osName;
         }
     } catch (error) {
-        console.error('Failed to fetch OS name:', error);
+        console.error(error);
     }
 
     try {
@@ -243,7 +269,7 @@ async function initializeApp() {
             osVersionDisplay.textContent = osVersion;
         }
     } catch (error) {
-        console.error('Failed to fetch OS version:', error);
+        console.error(error);
     }
 
     try {
@@ -260,14 +286,14 @@ async function initializeApp() {
             }
         }
     } catch (error) {
-        console.error('Failed to fetch last update:', error);
+        console.error(error);
     }
 
     refreshUptime();
     refreshProcessCount();
     refreshAppCount();
     refreshNetworkSpeed();
-    refreshOpenConnections();
+    refreshConnectionDetails();
     refreshLanDevices();
     refreshListeningPorts();
     refreshCpuUsage();
@@ -279,11 +305,12 @@ async function initializeApp() {
     refreshMonitors();
     refreshLastProcessStarted();
     refreshLastSleepTime();
+    refreshLastFileDownloaded();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
     setInterval(refreshNetworkSpeed, 1000); 
-    setInterval(refreshOpenConnections, 2500);
+    setInterval(refreshConnectionDetails, 2500);
     setInterval(refreshAppCount, 300_000); 
     setInterval(refreshLanDevices, 60_000);
     setInterval(refreshListeningPorts, 5000);
@@ -295,7 +322,8 @@ async function initializeApp() {
     setInterval(refreshPeripherals, 60_000);
     setInterval(refreshMonitors, 180_000);
     setInterval(refreshLastProcessStarted, 1000);
-    setInterval(refreshLastSleepTime, 600_000)
+    setInterval(refreshLastSleepTime, 600_000);
+    setInterval(refreshLastFileDownloaded, 10_000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

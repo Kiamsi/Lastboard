@@ -1,4 +1,5 @@
 use crate::UptimeInfo;
+use crate::ConnectionInfo;
 use std::fs;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -511,4 +512,99 @@ pub fn get_last_sleep_time() -> String {
     };
 
     String::from_utf8_lossy(&formatted.stdout).trim().to_string()
+}
+
+pub fn get_connections() -> Vec<ConnectionInfo> {
+    let mut connections = Vec::new();
+    connections.extend(read_proc_net("/proc/net/tcp", "TCP", false));
+    connections.extend(read_proc_net("/proc/net/tcp6", "TCP", true));
+    connections.extend(read_proc_net("/proc/net/udp", "UDP", false));
+    connections.extend(read_proc_net("/proc/net/udp6", "UDP", true));
+    connections
+}
+
+fn read_proc_net(path: &str, protocol: &str, is_v6: bool) -> Vec<ConnectionInfo> {
+    let Ok(content) = fs::read_to_string(path) else {
+        return Vec::new();
+    };
+
+    let mut connections = Vec::new();
+
+    for line in content.lines().skip(1) {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        if fields.len() < 4 {
+            continue;
+        }
+
+        let Some((local_hex, local_port_hex)) = fields[1].split_once(':') else {
+            continue;
+        };
+        let Some((remote_hex, remote_port_hex)) = fields[2].split_once(':') else {
+            continue;
+        };
+
+        let (local_address, remote_address) = if is_v6 {
+            (parse_hex_addr_v6(local_hex), parse_hex_addr_v6(remote_hex))
+        } else {
+            (parse_hex_addr_v4(local_hex), parse_hex_addr_v4(remote_hex))
+        };
+
+        let state = if protocol == "TCP" {
+            tcp_state_name(fields[3])
+        } else {
+            String::new()
+        };
+
+        connections.push(ConnectionInfo {
+            protocol: protocol.to_string(),
+            local_address,
+            local_port: parse_hex_port(local_port_hex),
+            remote_address,
+            remote_port: parse_hex_port(remote_port_hex),
+            state,
+        });
+    }
+
+    connections
+}
+
+fn parse_hex_addr_v4(hex_str: &str) -> String {
+    let val = u32::from_str_radix(hex_str, 16).unwrap_or(0);
+    let bytes = val.to_le_bytes();
+    format!("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3])
+}
+
+fn parse_hex_addr_v6(hex_str: &str) -> String {
+    if hex_str.len() != 32 {
+        return hex_str.to_string();
+    }
+    let mut bytes = [0u8; 16];
+    for i in 0..4 {
+        let chunk = &hex_str[i * 8..i * 8 + 8];
+        let val = u32::from_str_radix(chunk, 16).unwrap_or(0);
+        bytes[i * 4..i * 4 + 4].copy_from_slice(&val.to_le_bytes());
+    }
+    std::net::Ipv6Addr::from(bytes).to_string()
+}
+
+fn parse_hex_port(hex_str: &str) -> u16 {
+    u16::from_str_radix(hex_str, 16).unwrap_or(0)
+}
+
+fn tcp_state_name(code: &str) -> String {
+    match code {
+        "01" => "ESTABLISHED",
+        "02" => "SYN_SENT",
+        "03" => "SYN_RECV",
+        "04" => "FIN_WAIT1",
+        "05" => "FIN_WAIT2",
+        "06" => "TIME_WAIT",
+        "07" => "CLOSE",
+        "08" => "CLOSE_WAIT",
+        "09" => "LAST_ACK",
+        "0A" => "LISTEN",
+        "0B" => "CLOSING",
+        _ => "UNKNOWN",
+    }
+    .to_string()
 }

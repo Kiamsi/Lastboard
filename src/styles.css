@@ -83,23 +83,24 @@ body {
     border-radius: 6px;
     padding: 8px 12px;
     position: absolute;
-    z-index: 10;
+    z-index: 30;
     top: 130%; 
     left: 50%;
     transform: translateX(-50%);
     white-space: nowrap;
     opacity: 0;
-    transition: opacity 0.2s ease-in-out;
     border: 1px solid #333;
     box-shadow: 0 4px 6px rgba(0,0,0,0.4);
     font-size: 14px;
     width: 250px;
     white-space: normal;
+    transition: opacity 0.2s ease-in-out 0.13s, visibility 0s linear 0.13s;
 }
 
 .tooltip-container:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
+    transition: opacity 0.2s ease-in-out 0s, visibility 0s linear 0s;
 }
 
 .peek-zone {
@@ -160,14 +161,32 @@ body {
   transform: translateX(0);
 }
 
-.hiddenSectionValue{
+.hiddenSectionValue {
   font-size: 1.6em;
 }
 
-#diskUsageLabel{
+#diskUsageLabel {
   margin-bottom: 20px;
 }
 
-.diskCard{
+.diskCard {
   padding-bottom: 0px;
+}
+
+#lastFileDownloaded {
+  font-size: 1.1em;
+}
+
+#connectionsTooltip {
+    width: max-content;
+    max-width: 450px;
+    max-height: 250px;
+    overflow-y: auto;
+    text-align: left;
+    font-family: monospace;
+    font-size: 13px;
+    scrollbar-width: thin;
+    scrollbar-color: #6b737e #1a1a1a;
+    left: -35px;
+    transform: none;
 }
