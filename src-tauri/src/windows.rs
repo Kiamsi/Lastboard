@@ -6,6 +6,7 @@ use windows_sys::Win32::NetworkManagement::IpHelper::{
     GetTcp6Table2, GetTcpTable2, MIB_TCP6TABLE2, MIB_TCPTABLE2,
 };
 use std::process::Command;
+use std::os::windows::process::CommandExt;
 use windows_sys::Win32::System::Performance::{
     PdhAddCounterW, PdhCollectQueryData, PdhGetFormattedCounterValue, PdhOpenQueryW,
     PDH_CSTATUS_VALID_DATA, PDH_FMT_COUNTERVALUE, PDH_FMT_LARGE, PDH_HCOUNTER, PDH_HQUERY,
@@ -409,36 +410,24 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
     format!("{} (pid {})", busiest_name, busiest_pid)
 }
 
-fn extract_realtime_timestamp(json_line: &str) -> Option<u64> {
-    let key_pos = json_line.find("\"__REALTIME_TIMESTAMP\"")?;
-    let after_key = &json_line[key_pos + "\"__REALTIME_TIMESTAMP\"".len()..];
-    let colon_pos = after_key.find(':')?;
-    let after_colon = &after_key[colon_pos + 1..];
-    let value_start = after_colon.find('"')? + 1;
-    let value_slice = &after_colon[value_start..];
-    let value_end = value_slice.find('"')?;
-    value_slice[..value_end].parse::<u64>().ok()
-}
-
-#[tauri::command]
 pub fn get_last_sleep_time() -> String {
+    
     let execute = || -> Option<u64> {
-        let output = Command::new("journalctl")
-            .args(["-u", "systemd-suspend.service", "-o", "json", "-n", "1", "--no-pager"])
-            .output()
+        
+        let output = Command::new("powershell")
+            .arg("-NoProfile")
+            .arg("-Command")
+            .arg("$e = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Power'; Id=42} -MaxEvents 1 -ErrorAction SilentlyContinue; if ($e) { ([DateTimeOffset]$e.TimeCreated).ToUnixTimeSeconds() }")
             .creation_flags(CREATE_NO_WINDOW)
+            .output()
             .ok()?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
-        let last_line = stdout.lines().next()?;
-
-        let timestamp_micros = extract_realtime_timestamp(last_line)?;
-        Some(timestamp_micros / 1_000_000)
+        stdout.trim().parse::<u64>().ok()
     };
 
     match execute() {
-        Some(time) => time.to_string(),
-        None => String::new(), 
+        Some(time) => time.to_string(), None => String::new(),
     }
 }
 
