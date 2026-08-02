@@ -22,6 +22,8 @@ const lastProcessStarted = document.getElementById("lastProcessStarted");
 const lastSystemSleepDisplay = document.getElementById("lastSystemSleep");
 const lastFileDownloaded = document.getElementById("lastFileDownloaded");
 const connectionsTooltip = document.getElementById("connectionsTooltip");
+const lastInstalledAppDisplay = document.getElementById("lastInstalledApp");
+
 
 function formatUptime(totalSeconds) {
     const hours = Math.floor(totalSeconds / 3600);
@@ -242,6 +244,20 @@ async function refreshLastFileDownloaded() {
     }
 }
 
+async function refreshLastInstalledApp() {
+    try {
+        const app = await invoke("get_last_installed_app");
+        if (lastInstalledAppDisplay) {
+            lastInstalledAppDisplay.textContent = app;
+        }
+    } catch (error) {
+        console.error("couldn't get the app", error);
+        if (lastInstalledAppDisplay) {
+            lastInstalledAppDisplay.textContent = "Error";
+        }
+    }
+}
+
 async function initializeApp() {
     try {
         const initialData = await invoke('get_uptime');
@@ -306,6 +322,7 @@ async function initializeApp() {
     refreshLastProcessStarted();
     refreshLastSleepTime();
     refreshLastFileDownloaded();
+    refreshLastInstalledApp();
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);
@@ -324,6 +341,7 @@ async function initializeApp() {
     setInterval(refreshLastProcessStarted, 1000);
     setInterval(refreshLastSleepTime, 600_000);
     setInterval(refreshLastFileDownloaded, 10_000);
+    setInterval(refreshLastInstalledApp, 300_000);
 }
 
 window.addEventListener('DOMContentLoaded', initializeApp);

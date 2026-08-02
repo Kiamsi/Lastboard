@@ -394,11 +394,32 @@ fn get_connections() -> Vec<ConnectionInfo> {
 
 #[tauri::command]
 fn get_last_downloaded_file() -> String {
+    
     let downloads_dir = match dirs::download_dir() {
-        Some(path) => path,
-        None => return String::from("Unknown"),
+        
+        Some(path) => path, None => return String::from("Unknown"),
     };
+    
     newest_file_in(&downloads_dir)
+}
+
+#[tauri::command]
+fn get_last_installed_app() -> String {
+   
+    #[cfg(target_os = "windows")]
+    {
+        windows::get_last_installed_app()
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        linux::get_last_installed_app()
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        macos::get_last_installed_app()
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -439,6 +460,7 @@ pub fn run() {
             get_last_sleep_time,
             get_last_downloaded_file,
             get_connections,
+            get_last_installed_app,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

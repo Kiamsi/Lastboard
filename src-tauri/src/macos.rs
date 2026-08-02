@@ -448,3 +448,47 @@ pub fn get_connections() -> Vec<ConnectionInfo> {
     connections
 }
 
+pub fn get_last_installed_app() -> String {
+    let mut newest_time: Option<std::time::SystemTime> = None;
+    let mut newest_name = String::new();
+
+    let mut scan_dirs = vec![std::path::PathBuf::from("/Applications")];
+    if let Some(home) = dirs::home_dir() {
+        scan_dirs.push(home.join("Applications"));
+    }
+
+    for dir in scan_dirs {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+
+        for entry in entries.flatten() {
+            let file_name = entry.file_name().to_string_lossy().into_owned();
+            if !file_name.ends_with(".app") {
+                continue;
+            }
+
+            let Ok(metadata) = entry.metadata() else {
+                continue;
+            };
+
+            // Birth time, not modified time — an auto-updater touching files
+            // inside an already-installed bundle shouldn't count as "installed"
+            let Ok(created) = metadata.created() else {
+                continue;
+            };
+
+            let is_newer = match newest_time {
+                None => true,
+                Some(current) => created >= current,
+            };
+
+            if is_newer {
+                newest_time = Some(created);
+                newest_name = file_name.trim_end_matches(".app").to_string();
+            }
+        }
+    }
+
+    newest_name
+}

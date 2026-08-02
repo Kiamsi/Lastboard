@@ -489,11 +489,83 @@ fn split_host_port(addr: &str) -> (String, u16) {
         }
     }
     match addr.rfind(':') {
+        
         Some(pos) => {
+            
             let host = &addr[..pos];
+           
             let port = addr[pos + 1..].parse::<u16>().unwrap_or(0);
             (host.to_string(), port)
         }
+        
         None => (addr.to_string(), 0),
     }
+}
+
+pub fn get_last_installed_app() -> String {
+
+    let paths = [
+        (
+            RegKey::predef(HKEY_LOCAL_MACHINE),
+            "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        ),
+        (
+            RegKey::predef(HKEY_LOCAL_MACHINE),
+            "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        ),
+        (
+            RegKey::predef(HKEY_CURRENT_USER),
+            "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+        ),
+    ];
+
+    let mut newest_date: u32 = 0;
+    
+    let mut newest_name = String::new();
+
+    for (root_key, folder_path) in paths {
+       
+        let Ok(key) = root_key.open_subkey(folder_path) else {
+            continue;
+        };
+
+        for name in key.enum_keys().flatten() {
+            
+            let Ok(subkey) = key.open_subkey(&name) else {
+                continue;
+            };
+
+            let display_name_result: Result<String, _> = subkey.get_value("DisplayName");
+           
+            let Ok(display_name) = display_name_result else {
+                continue;
+            };
+            
+            let display_name = display_name.trim().to_string();
+            if display_name.is_empty() {
+                continue;
+            }
+
+            let install_date_result: Result<String, _> = subkey.get_value("InstallDate");
+           
+            let Ok(install_date) = install_date_result else {
+                continue;
+            };
+            let install_date = install_date.trim();
+
+            if install_date.len() != 8 || !install_date.bytes().all(|b| b.is_ascii_digit()) {
+                continue;
+            }
+            let Ok(date_num) = install_date.parse::<u32>() else {
+                continue;
+            };
+
+            if date_num >= newest_date {
+                newest_date = date_num;
+                newest_name = display_name;
+            }
+        }
+    }
+
+    newest_name
 }

@@ -608,3 +608,91 @@ fn tcp_state_name(code: &str) -> String {
     }
     .to_string()
 }
+
+pub fn get_last_installed_app() -> String {
+    
+    last_installed_apt().or_else(last_installed_pacman).or_else(last_installed_rpm)
+    .unwrap_or_default()
+}
+
+fn last_installed_apt() -> Option<String> {
+    for path in ["/var/log/dpkg.log", "/var/log/dpkg.log.1"] {
+        if let Some(app) = parse_dpkg_log(path) {
+            return Some(app);
+        }
+    }
+    None
+}
+
+fn parse_dpkg_log(path: &str) -> Option<String> {
+   
+    let contents = std::fs::read_to_string(path).ok()?;
+
+    for line in contents.lines().rev() {
+       
+        let fields: Vec<&str> = line.split_whitespace().collect();
+
+        if fields.len() >= 4 && fields[2] == "install" {
+           
+            let pkg_name = fields[3].split(':').next().unwrap_or(fields[3]);
+            
+            return Some(pkg_name.to_string());
+        }
+    }
+
+    None
+}
+
+fn last_installed_pacman() -> Option<String> {
+   
+    let contents = std::fs::read_to_string("/var/log/pacman.log").ok()?;
+
+    for line in contents.lines().rev() {
+        
+        let Some(rest) = line.split("[ALPM] installed ").nth(1) else {
+            continue;
+        };
+        
+        let Some(pkg_name) = rest.split_whitespace().next() else {
+            continue;
+        };
+        return Some(pkg_name.to_string());
+    }
+
+    None
+}
+
+fn last_installed_rpm() -> Option<String> {
+    
+    let output = Command::new("rpm").arg("-qa").arg("--queryformat").arg("%{INSTALLTIME} %{NAME}\n")
+        .output()
+        .ok()?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    let mut newest_time: u64 = 0;
+   
+    let mut newest_name = String::new();
+
+    for line in stdout.lines() {
+        
+        let mut parts = line.splitn(2, ' ');
+        
+        let Some(time_str) = parts.next() else { continue };
+        
+        let Some(name) = parts.next() else { continue };
+        
+        let Ok(time) = time_str.parse::<u64>() else { continue };
+
+        if time >= newest_time {
+            newest_time = time;
+            newest_name = name.to_string();
+        }
+    }
+
+    if newest_name.is_empty() {
+        None
+    } else {
+        Some(newest_name)
+    }
+}
