@@ -72,38 +72,50 @@ async function refreshNetworkSpeed() {
     }
 }
 
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function renderConnectionLine(c) {
+    const owner = c.process_name
+        ? `${escapeHtml(c.process_name)} <span style="color:#6b737e;">(pid ${c.pid})</span>`
+        : '<span style="color:#6b737e;">Unknown process</span>';
+    const state = c.state || c.protocol;
+
+    return `
+        <div>
+            <strong style="color: #c8ccd5;">${owner}</strong><br>
+            ${c.protocol} ${c.local_address}:${c.local_port} &rarr;
+            ${c.remote_address}:${c.remote_port}
+            <span style="color: #939292; font-size: 0.9em;">(${state})</span>
+        </div>
+    `;
+}
+
+function renderConnectionGroup(connections, emptyText) {
+    if (connections.length === 0) {
+        return `<div style="color:#6b737e; font-style: italic;">${emptyText}</div>`;
+    }
+    return `<div style="display: flex; flex-direction: column; gap: 8px;">${connections.map(renderConnectionLine).join('')}</div>`;
+}
+
 async function refreshConnectionDetails() {
     if (!connectionsTooltip) return;
     try {
-        
         const allConnections = await invoke('get_connections');
         const activeConnections = allConnections.filter(c => c.state === 'ESTABLISHED');
+        const nonActiveConnections = allConnections.filter(c => c.state !== 'ESTABLISHED');
 
         if (connectionsDisplay) {
             connectionsDisplay.textContent = activeConnections.length;
         }
 
-        if (activeConnections.length === 0) {
-            connectionsTooltip.innerHTML = 'No active connections found.';
-            return;
-        }
-
-        let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
-        
-        for (let i = 0; i < activeConnections.length; i++) {
-            const c = activeConnections[i];
-            html += `
-                <div>
-                    <strong style="color: #c8ccd5;">${c.protocol}</strong> 
-                    ${c.local_address}:${c.local_port} &rarr; 
-                    ${c.remote_address}:${c.remote_port} 
-                    <span style="color: #939292; font-size: 0.9em;">(${c.state})</span>
-                </div>
-            `;
-        }
-
-        html += '</div>';
-        connectionsTooltip.innerHTML = html;
+        connectionsTooltip.innerHTML =
+            renderConnectionGroup(activeConnections, 'No active connections found.') +
+            `<div class="connections-divider">Non-active (${nonActiveConnections.length})</div>` +
+            renderConnectionGroup(nonActiveConnections, 'None.');
 
     } catch (error) {
         connectionsTooltip.innerHTML = 'Error loading connection data.';

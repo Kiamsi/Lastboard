@@ -32,6 +32,8 @@ pub struct ConnectionInfo {
     pub remote_address: String,
     pub remote_port: u16,
     pub state: String,
+    pub pid: Option<i32>,
+    pub process_name: Option<String>,
 }
 
 #[tauri::command]

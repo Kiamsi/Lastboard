@@ -514,16 +514,76 @@ pub fn get_last_sleep_time() -> String {
     String::from_utf8_lossy(&formatted.stdout).trim().to_string()
 }
 
+fn build_inode_to_process_map() -> HashMap<u64, (i32, String)> {
+    let mut map = HashMap::new();
+
+    let Ok(proc_dir) = fs::read_dir("/proc") else {
+        return map;
+    };
+
+    for entry in proc_dir.flatten() {
+        let name_str = entry.file_name().to_string_lossy().to_string();
+        let Ok(pid) = name_str.parse::<i32>() else {
+            continue; 
+        };
+
+        let Ok(fd_dir) = fs::read_dir(format!("/proc/{}/fd", pid)) else {
+            continue; // different user, or process exited mid-scan
+        };
+
+        let mut process_name: Option<String> = None;
+
+        for fd_entry in fd_dir.flatten() {
+            let Ok(link_target) = fs::read_link(fd_entry.path()) else {
+                continue;
+            };
+            let target_str = link_target.to_string_lossy();
+
+            let Some(inode_str) = target_str
+                .strip_prefix("socket:[")
+                .and_then(|s| s.strip_suffix(']'))
+            else {
+                continue;
+            };
+            let Ok(inode) = inode_str.parse::<u64>() else {
+                continue;
+            };
+
+            if process_name.is_none() {
+                process_name = Some(
+                    fs::read_to_string(format!("/proc/{}/comm", pid))
+                        .unwrap_or_else(|_| String::from("unknown"))
+                        .trim()
+                        .to_string(),
+                );
+            }
+
+            if let Some(name) = &process_name {
+                map.insert(inode, (pid, name.clone()));
+            }
+        }
+    }
+
+    map
+}
+
 pub fn get_connections() -> Vec<ConnectionInfo> {
+    let inode_map = build_inode_to_process_map();
+
     let mut connections = Vec::new();
-    connections.extend(read_proc_net("/proc/net/tcp", "TCP", false));
-    connections.extend(read_proc_net("/proc/net/tcp6", "TCP", true));
-    connections.extend(read_proc_net("/proc/net/udp", "UDP", false));
-    connections.extend(read_proc_net("/proc/net/udp6", "UDP", true));
+    connections.extend(read_proc_net("/proc/net/tcp", "TCP", false, &inode_map));
+    connections.extend(read_proc_net("/proc/net/tcp6", "TCP", true, &inode_map));
+    connections.extend(read_proc_net("/proc/net/udp", "UDP", false, &inode_map));
+    connections.extend(read_proc_net("/proc/net/udp6", "UDP", true, &inode_map));
     connections
 }
 
-fn read_proc_net(path: &str, protocol: &str, is_v6: bool) -> Vec<ConnectionInfo> {
+fn read_proc_net(
+    path: &str,
+    protocol: &str,
+    is_v6: bool,
+    inode_map: &HashMap<u64, (i32, String)>,
+) -> Vec<ConnectionInfo> {
     let Ok(content) = fs::read_to_string(path) else {
         return Vec::new();
     };
@@ -531,8 +591,10 @@ fn read_proc_net(path: &str, protocol: &str, is_v6: bool) -> Vec<ConnectionInfo>
     let mut connections = Vec::new();
 
     for line in content.lines().skip(1) {
+        
         let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() < 4 {
+
+        if fields.len() < 10 {
             continue;
         }
 
@@ -555,6 +617,12 @@ fn read_proc_net(path: &str, protocol: &str, is_v6: bool) -> Vec<ConnectionInfo>
             String::new()
         };
 
+        let inode: u64 = fields[9].parse().unwrap_or(0);
+        let (pid, process_name) = match inode_map.get(&inode) {
+            Some((pid, name)) => (Some(*pid), Some(name.clone())),
+            None => (None, None),
+        };
+
         connections.push(ConnectionInfo {
             protocol: protocol.to_string(),
             local_address,
@@ -562,6 +630,8 @@ fn read_proc_net(path: &str, protocol: &str, is_v6: bool) -> Vec<ConnectionInfo>
             remote_address,
             remote_port: parse_hex_port(remote_port_hex),
             state,
+            pid,
+            process_name,
         });
     }
 
@@ -616,27 +686,39 @@ pub fn get_last_installed_app() -> String {
 }
 
 fn last_installed_apt() -> Option<String> {
-    for path in ["/var/log/dpkg.log", "/var/log/dpkg.log.1"] {
-        if let Some(app) = parse_dpkg_log(path) {
+    for path in ["/var/log/apt/history.log", "/var/log/apt/history.log.1"] {
+        if let Some(app) = parse_apt_history(path) {
             return Some(app);
         }
     }
     None
 }
 
-fn parse_dpkg_log(path: &str) -> Option<String> {
-   
+fn parse_apt_history(path: &str) -> Option<String> {
+    
     let contents = std::fs::read_to_string(path).ok()?;
 
-    for line in contents.lines().rev() {
-       
-        let fields: Vec<&str> = line.split_whitespace().collect();
+    for block in contents.split("\n\n").collect::<Vec<_>>().into_iter().rev() {
+        let Some(install_line) = block.lines().find(|l| l.starts_with("Install: ")) else {
+            continue;
+        };
 
-        if fields.len() >= 4 && fields[2] == "install" {
-           
-            let pkg_name = fields[3].split(':').next().unwrap_or(fields[3]);
-            
-            return Some(pkg_name.to_string());
+        let packages = &install_line["Install: ".len()..];
+
+        for pkg_entry in packages.split("), ") {
+            let is_automatic = pkg_entry.trim_end_matches(')').ends_with("automatic");
+            if is_automatic {
+                continue;
+            }
+
+            let Some(name) = pkg_entry.split(':').next() else {
+                continue;
+            };
+            let name = name.trim();
+
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
         }
     }
 
@@ -665,8 +747,7 @@ fn last_installed_pacman() -> Option<String> {
 fn last_installed_rpm() -> Option<String> {
     
     let output = Command::new("rpm").arg("-qa").arg("--queryformat").arg("%{INSTALLTIME} %{NAME}\n")
-        .output()
-        .ok()?;
+        .output().ok()?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
 
