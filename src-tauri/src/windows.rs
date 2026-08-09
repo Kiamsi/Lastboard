@@ -1,4 +1,5 @@
 use crate::UptimeInfo;
+use crate::AppState;
 use crate::ConnectionInfo;
 use winreg::enums::*;
 use winreg::RegKey;
@@ -431,7 +432,7 @@ pub fn get_last_sleep_time() -> String {
     }
 }
 
-pub fn get_connections() -> Vec<ConnectionInfo> {
+pub fn get_connections(state: tauri::State<AppState>) -> Vec<ConnectionInfo> {
     let cmd_result = Command::new("netstat").arg("-ano").output();
 
     let output = match cmd_result {
@@ -440,6 +441,15 @@ pub fn get_connections() -> Vec<ConnectionInfo> {
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // refresh the shared process list once so the PIDs below can be resolved to names
+    let mut system = state.system.lock().unwrap();
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        sysinfo::ProcessRefreshKind::nothing(),
+    );
+
     let mut connections = Vec::new();
 
     for line in stdout.lines() {
@@ -458,11 +468,23 @@ pub fn get_connections() -> Vec<ConnectionInfo> {
 
         let (local_address, local_port) = split_host_port(fields[1]);
         let (remote_address, remote_port) = split_host_port(fields[2]);
-        let state = if protocol == "TCP" {
+
+        let state_str = if protocol == "TCP" {
             fields.get(3).unwrap_or(&"").to_string()
         } else {
             String::new()
         };
+
+        // PID is always the last column, but it lands one field earlier for UDP
+        // since UDP rows have no State column
+        let pid_field = if protocol == "TCP" { fields.get(4) } else { fields.get(3) };
+        let pid = pid_field.and_then(|p| p.parse::<i32>().ok());
+
+        let process_name = pid.and_then(|p| {
+            system
+                .process(sysinfo::Pid::from_u32(p as u32))
+                .map(|proc_| proc_.name().to_string_lossy().to_string())
+        });
 
         connections.push(ConnectionInfo {
             protocol: protocol.to_string(),
@@ -470,7 +492,9 @@ pub fn get_connections() -> Vec<ConnectionInfo> {
             local_port,
             remote_address,
             remote_port,
-            state,
+            state: state_str,
+            pid,
+            process_name,
         });
     }
 

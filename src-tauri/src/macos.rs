@@ -393,7 +393,17 @@ pub fn get_last_disk_writer(previous_totals: &mut HashMap<i32, u64>) -> String {
 }
 
 fn split_host_port(addr: &str) -> (String, u16) {
-    match addr.rfind('.') {
+    if let Some(rest) = addr.strip_prefix('[') {
+        if let Some(close) = rest.find(']') {
+            let host = &rest[..close];
+            let port = rest[close + 1..]
+                .strip_prefix(':')
+                .and_then(|p| p.parse::<u16>().ok())
+                .unwrap_or(0);
+            return (host.to_string(), port);
+        }
+    }
+    match addr.rfind(':') {
         Some(pos) => {
             let host = &addr[..pos];
             let port = addr[pos + 1..].parse::<u16>().unwrap_or(0);
@@ -404,7 +414,11 @@ fn split_host_port(addr: &str) -> (String, u16) {
 }
 
 pub fn get_connections() -> Vec<ConnectionInfo> {
-    let cmd_result = Command::new("netstat").arg("-an").output();
+    let cmd_result = Command::new("lsof")
+        .arg("-nP")          // -n: skip DNS lookups, -P: show raw port numbers
+        .arg("+c").arg("0")  // don't truncate the COMMAND column
+        .arg("-i")            // internet sockets only
+        .output();
 
     let output = match cmd_result {
         Ok(out) => out,
@@ -414,26 +428,47 @@ pub fn get_connections() -> Vec<ConnectionInfo> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let mut connections = Vec::new();
 
-    for line in stdout.lines() {
+    for line in stdout.lines().skip(1) { // skip header row
         let fields: Vec<&str> = line.split_whitespace().collect();
 
-        let protocol = match fields.first().copied() {
-            Some(p) if p.starts_with("tcp") => "TCP",
-            Some(p) if p.starts_with("udp") => "UDP",
-            _ => continue,
+        // Anchor on the NODE (protocol) column by value, not fixed position: COMMAND
+        // can itself contain spaces (e.g. "Google Chrome H"), which would otherwise
+        // shift every column to its right if we counted from the left.
+        let Some(protocol_idx) = fields.iter().position(|f| *f == "TCP" || *f == "UDP") else {
+            continue;
         };
-
-        if fields.len() < 5 {
+        if protocol_idx < 7 || fields.len() < protocol_idx + 2 {
             continue;
         }
 
-        let (local_address, local_port) = split_host_port(fields[3]);
-        let (remote_address, remote_port) = split_host_port(fields[4]);
-        let state = if protocol == "TCP" {
-            fields.get(5).unwrap_or(&"").to_string()
-        } else {
-            String::new()
-        };
+        let protocol = fields[protocol_idx];
+        let pid_idx = protocol_idx - 6; // COMMAND... PID USER FD TYPE DEVICE SIZE/OFF NODE
+        let pid = fields[pid_idx].parse::<i32>().ok();
+        let process_name = fields[..pid_idx].join(" ");
+
+        let mut name_part = fields[protocol_idx + 1..].join(" ");
+        let mut conn_state = String::new();
+
+        if name_part.ends_with(')') {
+            if let Some(open_paren) = name_part.rfind('(') {
+                conn_state = name_part[open_paren + 1..name_part.len() - 1].to_string();
+                name_part.truncate(open_paren);
+                name_part = name_part.trim().to_string();
+            }
+        }
+
+        let (local_address, local_port, remote_address, remote_port) =
+            match name_part.split_once("->") {
+                Some((local_str, remote_str)) => {
+                    let (la, lp) = split_host_port(local_str.trim());
+                    let (ra, rp) = split_host_port(remote_str.trim());
+                    (la, lp, ra, rp)
+                }
+                None => {
+                    let (la, lp) = split_host_port(name_part.trim());
+                    (la, lp, "*".to_string(), 0)
+                }
+            };
 
         connections.push(ConnectionInfo {
             protocol: protocol.to_string(),
@@ -441,7 +476,9 @@ pub fn get_connections() -> Vec<ConnectionInfo> {
             local_port,
             remote_address,
             remote_port,
-            state,
+            state: conn_state,
+            pid,
+            process_name: Some(process_name),
         });
     }
 
