@@ -23,6 +23,7 @@ const lastSystemSleepDisplay = document.getElementById("lastSystemSleep");
 const lastFileDownloaded = document.getElementById("lastFileDownloaded");
 const connectionsTooltip = document.getElementById("connectionsTooltip");
 const lastInstalledAppDisplay = document.getElementById("lastInstalledApp");
+const resetStatsButton = document.getElementById("resetStatsButton");
 
 
 function formatUptime(totalSeconds) {
@@ -270,6 +271,27 @@ async function refreshLastInstalledApp() {
     }
 }
 
+function refreshAllStats() {
+    refreshUptime();
+    refreshProcessCount();
+    refreshAppCount();
+    refreshNetworkSpeed();
+    refreshConnectionDetails();
+    refreshLanDevices();
+    refreshListeningPorts();
+    refreshCpuUsage();
+    refreshCpuSpeed();
+    refreshRamUsage();
+    refreshDiskIo();
+    refreshDiskWriter();
+    refreshPeripherals();
+    refreshMonitors();
+    refreshLastProcessStarted();
+    refreshLastSleepTime();
+    refreshLastFileDownloaded();
+    refreshLastInstalledApp();
+}
+
 async function initializeApp() {
     try {
         const initialData = await invoke('get_uptime');
@@ -317,24 +339,16 @@ async function initializeApp() {
         console.error(error);
     }
 
-    refreshUptime();
-    refreshProcessCount();
-    refreshAppCount();
-    refreshNetworkSpeed();
-    refreshConnectionDetails();
-    refreshLanDevices();
-    refreshListeningPorts();
-    refreshCpuUsage();
-    refreshCpuSpeed();
-    refreshRamUsage();
-    refreshDiskIo();
-    refreshDiskWriter();
-    refreshPeripherals();
-    refreshMonitors();
-    refreshLastProcessStarted();
-    refreshLastSleepTime();
-    refreshLastFileDownloaded();
-    refreshLastInstalledApp();
+    refreshAllStats();
+
+    if (resetStatsButton) {
+        resetStatsButton.addEventListener('click', () => {
+            refreshAllStats();
+            resetStatsButton.classList.remove('spinning');
+            void resetStatsButton.offsetWidth;
+            resetStatsButton.classList.add('spinning');
+        });
+    }
 
     setInterval(refreshUptime, 1000);
     setInterval(refreshProcessCount, 1000);

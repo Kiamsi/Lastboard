@@ -51,6 +51,43 @@ body {
     letter-spacing: 0.05em;
 }
 
+.section-header--with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reset-button {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 2px solid #6b737e;
+  border-radius: 50%;
+  color: #c8ccd5;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.reset-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #e8e8e8;
+  color: #e8e8e8;
+}
+
+.reset-button.spinning {
+  animation: spin 0.5s ease;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .tooltip-container {
     position: relative;
     display: inline-block;
