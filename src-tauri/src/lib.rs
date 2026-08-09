@@ -379,17 +379,19 @@ fn get_last_sleep_time() -> String {
 }
 
 #[tauri::command]
-fn get_connections() -> Vec<ConnectionInfo> {
+fn get_connections(state: tauri::State<AppState>) -> Vec<ConnectionInfo> {
     #[cfg(target_os = "windows")]
     {
-        windows::get_connections()
+        windows::get_connections(state)
     }
     #[cfg(target_os = "linux")]
     {
+        let _ = state;
         linux::get_connections()
     }
     #[cfg(target_os = "macos")]
     {
+        let _ = state;
         macos::get_connections()
     }
 }
